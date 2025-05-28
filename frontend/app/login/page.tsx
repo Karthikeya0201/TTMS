@@ -183,7 +183,14 @@ export default function LoginPage() {
               </Button>
             </form>
           </CardContent>
+           <div className="mt-4 text-sm text-center text-gray-600">
+          <p className="font-medium">Demo Credentials</p>
+          <p><span className="font-semibold">Admin:</span> admin@institute.edu / admin123</p>
+          <p><span className="font-semibold">Faculty:</span> faculty@institute.edu / faculty123</p>
+        </div>
         </Card>
+       
+
 
         <div className="mt-6 text-center">
           <Link href="/" className="text-sm text-blue-600 hover:underline">

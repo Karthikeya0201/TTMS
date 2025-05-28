@@ -3,10 +3,12 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Clock, Users, BookOpen, MapPin, Shield, ArrowRight, CheckCircle, Star } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function LandingPage() {
   const [isVisible, setIsVisible] = useState(false)
   const [hoveredCard, setHoveredCard] = useState(null)
+  const router = useRouter()
 
   useEffect(() => {
     setIsVisible(true)
@@ -92,8 +94,8 @@ export default function LandingPage() {
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse" style={{animationDelay: '4s'}}></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse" style={{ animationDelay: '4s' }}></div>
       </div>
 
       {/* Hero Section */}
@@ -104,32 +106,33 @@ export default function LandingPage() {
               <Star className="w-4 h-4 mr-2" />
               Trusted by 100+ Engineering Institutes
             </div>
-            
+
             <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
               Smart Timetable Management
               <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent animate-pulse">
                 for Engineering Institutes
               </span>
             </h1>
-            
+
             <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-4xl mx-auto leading-relaxed">
-              Streamline your academic scheduling with our comprehensive timetable management system. 
+              Streamline your academic scheduling with our comprehensive timetable management system.
               <span className="text-blue-600 font-semibold"> Eliminate conflicts</span>,
               <span className="text-green-600 font-semibold"> optimize resources</span>, and
               <span className="text-purple-600 font-semibold"> enhance educational efficiency</span>.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group"
+                onClick={() => router.push('/login')}
               >
                 Get Started Today
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button 
-                variant="outline" 
-                size="lg" 
+              <Button
+                variant="outline"
+                size="lg"
                 className="px-10 py-4 text-lg font-semibold border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 transform hover:scale-105 transition-all duration-300"
               >
                 Watch Demo
@@ -163,7 +166,7 @@ export default function LandingPage() {
                 <div
                   key={index}
                   className={`transform transition-all duration-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}
-                  style={{animationDelay: feature.delay}}
+                  style={{ animationDelay: feature.delay }}
                   onMouseEnter={() => setHoveredCard(index)}
                   onMouseLeave={() => setHoveredCard(null)}
                 >
@@ -195,7 +198,7 @@ export default function LandingPage() {
             <h2 className="text-4xl font-bold text-white mb-4">Trusted by Educational Leaders</h2>
             <p className="text-xl text-blue-200">Join thousands of institutions already using our platform</p>
           </div>
-          
+
           <div className="grid md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div
@@ -225,8 +228,8 @@ export default function LandingPage() {
             <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
               Join the revolution in academic timetable management. Start your free trial today.
             </p>
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="bg-white text-blue-600 hover:bg-gray-100 px-12 py-4 text-lg font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 group"
             >
               Start Free Trial
@@ -260,7 +263,7 @@ export default function LandingPage() {
                 ))}
               </div>
             </div>
-            
+
             {[
               {
                 title: "Features",
@@ -287,7 +290,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          
+
           <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 mb-4 md:mb-0">
               &copy; 2024 TimeTable Pro. All rights reserved.
