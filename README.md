@@ -8,9 +8,9 @@ A centralized, conflict-free Time Table Management System built for engineering 
 
 | Layer        | Technology               |
 |--------------|--------------------------|
-| Frontend     | [Next.js](https://nextjs.org/) + Tailwind CSS |
-| Backend      | [Node.js](https://nodejs.org/) + [Express.js](https://expressjs.com/) |
-| Database     | MongoDB / PostgreSQL     |
+| Frontend     | [Next.js] + Tailwind CSS |
+| Backend      | [Node.js] + [Express.js] |
+| Database     | MongoDB    |
 | Auth         | JWT-based Authentication |
 | Styling      | Tailwind CSS             |
 
@@ -38,7 +38,7 @@ TTMS/
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/timetable-management.git
+git clone https://github.com/Karthikeya0201/TTMS.git
 
 cd backend
 npm install --force
@@ -48,8 +48,21 @@ npm install --force
 
 ```
 
-
 ### Start the Backend
 
 ```bash
-cd backend
+
+    cd backend
+    npm start
+
+```
+
+### Start the Frontend
+
+```bash
+
+    cd frontend
+    npm run dev
+
+```
+
