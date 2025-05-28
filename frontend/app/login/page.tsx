@@ -1,85 +1,81 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+
+// Define the shape of form data
+interface FormData {
+  email: string;
+  password: string;
+  role: string;
+}
+
+// Define the expected API response
+interface LoginResponse {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+}
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
     role: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const router = useRouter();
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^\S+@\S+\.\S+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
-
-    // Client-side validation
-    if (!formData.role) {
-      setError("Please select a role");
-      setIsLoading(false);
-      toast({ title: "Error", description: "Please select a role", variant: "destructive" });
-      return;
-    }
-    if (!validateEmail(formData.email)) {
-      setError("Please enter a valid email");
-      setIsLoading(false);
-      toast({ title: "Error", description: "Please enter a valid email", variant: "destructive" });
-      return;
-    }
-    if (!formData.password) {
-      setError("Please enter a password");
-      setIsLoading(false);
-      toast({ title: "Error", description: "Please enter a password", variant: "destructive" });
-      return;
-    }
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, formData);
-
-      if (response.data.success) {
-        // Store token and user in localStorage
-        localStorage.setItem("auth-token", response.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-
-        toast({
-          title: "Success",
-          description: `Welcome back, ${response.data.user.name}!`,
-        });
-
-        // Redirect based on role
-        if (response.data.user.role === "admin") {
-          router.push("/admin/dashboard");
-        } else if (response.data.user.role === "faculty") {
-          router.push("/faculty/dashboard");
+      const response = await axios.post<LoginResponse>(
+        `${API_BASE_URL}/auth/login`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
+      );
+
+      // Store token and user in localStorage
+      localStorage.setItem("auth-token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+
+      toast({
+        title: "Success",
+        description: `Welcome back, ${response.data.user.name}!`,
+      });
+
+      // Redirect based on role
+      if (response.data.user.role === "admin") {
+        router.push("/admin/dashboard");
+      } else if (response.data.user.role === "faculty") {
+        router.push("/faculty/dashboard");
+      } else {
+        throw new Error('Invalid role');
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || "Login failed. Please try again.";
-      setError(errorMessage);
       toast({
         title: "Error",
         description: errorMessage,
@@ -90,9 +86,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setError(""); // Clear error when user starts typing
   };
 
   return (
@@ -110,10 +105,6 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{error}</div>
-              )}
-
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
                 <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
@@ -179,7 +170,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={isLoading || !formData.role || !formData.email || !formData.password}
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <>

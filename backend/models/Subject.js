@@ -15,11 +15,7 @@ const subjectSchema = new mongoose.Schema({
     ref: 'Semester',
     required: true,
   },
-  faculty: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Faculty',
-    required: false, // Faculty might be optional
-  },
+  
 });
 
 export default mongoose.model('Subject', subjectSchema);

@@ -25,6 +25,10 @@ export const validate = (method) => {
         check('name').notEmpty().withMessage('Subject name is required'),
         check('code').notEmpty().withMessage('Subject code is required'),
         check('semester').isMongoId().withMessage('Valid semester ID is required'),
+        check('faculty')
+          .optional() // Faculty is optional
+          .isMongoId()
+          .withMessage('Valid faculty ID is required if provided'),
       ];
     case 'createFaculty':
       return [
@@ -35,21 +39,6 @@ export const validate = (method) => {
       return [
         check('name').notEmpty().withMessage('Classroom name is required'),
         check('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive number'),
-      ];
-    case 'checkConflicts':
-      return [
-        check('timeSlot').isMongoId().withMessage('Valid time slot ID is required'),
-        check('faculty').isMongoId().withMessage('Valid faculty ID is required'),
-        check('classroom').isMongoId().withMessage('Valid classroom ID is required'),
-      ];
-    case 'createTimetable':
-      return [
-        check('entries').isArray().withMessage('Entries must be an array'),
-        check('entries.*.section').isMongoId().withMessage('Valid section ID is required'),
-        check('entries.*.subject').isMongoId().withMessage('Valid subject ID is required'),
-        check('entries.*.faculty').isMongoId().withMessage('Valid faculty ID is required'),
-        check('entries.*.classroom').isMongoId().withMessage('Valid classroom ID is required'),
-        check('entries.*.timeSlot').isMongoId().withMessage('Valid time slot ID is required'),
       ];
     case 'createTimeSlot':
       return [
@@ -68,11 +57,11 @@ export const validate = (method) => {
           .isIn(['admin', 'faculty'])
           .withMessage('Role must be either admin or faculty'),
       ];
-      case 'checkConflicts':
+    case 'checkConflicts':
       return [
         check('timeSlot').isMongoId().withMessage('Valid time slot ID is required'),
         check('faculty').isMongoId().withMessage('Valid faculty ID is required'),
-        check('room').isMongoId().withMessage('Valid room ID is required'),
+        check('classroom').isMongoId().withMessage('Valid classroom ID is required'),
       ];
     case 'createTimetable':
       return [
@@ -80,7 +69,7 @@ export const validate = (method) => {
         check('entries.*.section').isMongoId().withMessage('Valid section ID is required'),
         check('entries.*.subject').isMongoId().withMessage('Valid subject ID is required'),
         check('entries.*.faculty').isMongoId().withMessage('Valid faculty ID is required'),
-        check('entries.*.room').isMongoId().withMessage('Valid room ID is required'),
+        check('entries.*.classroom').isMongoId().withMessage('Valid classroom ID is required'),
         check('entries.*.timeSlot').isMongoId().withMessage('Valid time slot ID is required'),
       ];
     default:
