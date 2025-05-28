@@ -1,6 +1,6 @@
+// routes/timetable.js
 import express from 'express';
 import * as timetableController from '../controllers/timetableController.js';
-import { validate } from '../middleware/validate.js';
 import { auth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -9,9 +9,9 @@ const router = express.Router();
 router.get('/section/:sectionId', timetableController.getTimetableBySection);
 
 // Check conflicts
-router.post('/check-conflicts', validate('checkConflicts'), timetableController.checkConflicts);
+router.post('/check-conflicts', timetableController.checkConflicts);
 
-// Save timetable entries
-router.post('/', validate('createTimetable'), auth('admin'), timetableController.createTimetable);
+// Save timetable entries (admin only)
+router.post('/', auth('admin'), timetableController.createTimetable);
 
 export default router;

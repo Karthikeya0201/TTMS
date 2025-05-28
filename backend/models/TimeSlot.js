@@ -22,9 +22,6 @@ const timeSlotSchema = new mongoose.Schema({
 }, {
   timestamps: true,
   indexes: [{ key: { day: 1, period: 1 }, unique: true }],
-
 });
 
-const TimeSlot = mongoose.model('TimeSlot', timeSlotSchema);
-
-export default TimeSlot;
+export default mongoose.models.TimeSlot || mongoose.model('TimeSlot', timeSlotSchema);

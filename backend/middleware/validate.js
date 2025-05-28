@@ -80,8 +80,15 @@ export const validate = (method) => {
 export const validateResult = asyncHandler(async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(400);
-    throw new Error(errors.array()[0].msg);
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array().map(err => ({
+        field: err.param,
+        message: err.msg,
+        value: err.value
+      }))
+    });
   }
   next();
 });

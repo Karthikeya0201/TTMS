@@ -4,7 +4,7 @@ import asyncHandler from 'express-async-handler';
 // Get all time slots
 export const getTimeSlots = asyncHandler(async (req, res) => {
   const timeSlots = await TimeSlot.find();
-  res.json(timeSlots);
+  res.json({ success: true, data: timeSlots });
 });
 
 // Create a time slot
@@ -15,7 +15,7 @@ export const createTimeSlot = asyncHandler(async (req, res) => {
     throw new Error('All fields are required');
   }
   const timeSlot = await TimeSlot.create({ day, period, startTime, endTime });
-  res.status(201).json(timeSlot);
+  res.status(201).json({ success: true, data: timeSlot });
 });
 
 // Delete a time slot
@@ -25,5 +25,5 @@ export const deleteTimeSlot = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error('Time slot not found');
   }
-  res.json({ message: 'Time slot deleted' });
+  res.json({ success: true, message: 'Time slot deleted' });
 });
