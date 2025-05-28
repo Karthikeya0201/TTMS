@@ -1,0 +1,920 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { AlertTriangle, Check, Save } from "lucide-react";
+import axios, { AxiosError } from "axios";
+import { toast } from "@/components/ui/use-toast";
+
+// Interfaces aligned with backend schemas
+interface Batch {
+  _id: string;
+  name: string;
+  startYear: number;
+  endYear: number;
+}
+
+interface Branch {
+  _id: string;
+  name: string;
+  branchCode: string;
+}
+
+interface Semester {
+  _id: string;
+  name: string;
+  branch: string | Branch; // Branch _id or populated Branch object
+  batch: string | Batch;   // Batch _id or populated Batch object
+}
+
+interface Section {
+  _id: string;
+  name: string;
+  semester: string | Semester; // Semester _id or populated Semester object
+}
+
+interface Subject {
+  _id: string;
+  name: string;
+  code: string;
+  semester: string | { _id: string; name: string }; // Semester _id or populated Semester object
+  faculty?: string | { _id: string; name: string; email: string }; // Faculty _id or populated Faculty object
+}
+
+interface Faculty {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+interface Classroom {
+  _id: string;
+  name: string;
+  capacity: number;
+}
+
+interface TimeSlot {
+  _id: string;
+  day: string;
+  period: number;
+  startTime: string;
+  endTime: string;
+}
+
+interface TimetableEntry {
+  _id: string;
+  section: string; // Section _id
+  subject: string; // Subject _id
+  faculty: string; // Faculty _id
+  classroom: string; // Classroom _id
+  timeSlot: string; // TimeSlot _id
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface APIResponse<T> {
+  success?: boolean;
+  data: T;
+  message?: string;
+}
+
+interface SlotData {
+  subject: string;
+  faculty: string;
+  classroom: string;
+}
+
+type TimetableData = { [slotKey: string]: SlotData };
+
+export default function CreateTimetablePage() {
+  const [selectedBatch, setSelectedBatch] = useState<string>("");
+  const [selectedBranch, setSelectedBranch] = useState<string>("");
+  const [selectedSemester, setSelectedSemester] = useState<string>("");
+  const [selectedSection, setSelectedSection] = useState<string>("");
+  const [conflicts, setConflicts] = useState<string[]>([]);
+  const [timetableData, setTimetableData] = useState<TimetableData>({});
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [slotData, setSlotData] = useState<SlotData>({
+    subject: "",
+    faculty: "",
+    classroom: "",
+  });
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPeriod, setCurrentPeriod] = useState<number | null>(null);
+  const router = useRouter();
+
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+  const currentDay = "Wednesday"; // Since today is Wednesday, May 28, 2025
+  const currentTime = new Date("2025-05-28T19:39:00+05:30"); // Current time: 07:39 PM IST
+
+  // Configure Axios with auth header
+  const axiosInstance = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  // Add interceptor to include token in requests
+  axiosInstance.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        throw new Error("No authentication token found. Please log in.");
+      }
+      return config;
+    },
+    (error) => {
+      toast({
+        title: "Authentication Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      router.push("/login");
+      return Promise.reject(error);
+    }
+  );
+
+  // Fetch master data from backend
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [
+          batchesRes,
+          branchesRes,
+          semestersRes,
+          sectionsRes,
+          subjectsRes,
+          facultiesRes,
+          classroomsRes,
+          timeSlotsRes,
+        ] = await Promise.all([
+          axiosInstance.get("/batches"),
+          axiosInstance.get("/branches"),
+          axiosInstance.get("/semesters"),
+          axiosInstance.get("/sections"),
+          axiosInstance.get("/subjects"),
+          axiosInstance.get("/faculties"),
+          axiosInstance.get("/classrooms"),
+          axiosInstance.get("/timeslots"),
+        ]);
+
+        const fetchedBatches = batchesRes.data.data || batchesRes.data || [];
+        const fetchedBranches = branchesRes.data.data || branchesRes.data || [];
+        const fetchedSemesters = semestersRes.data.data || semestersRes.data || [];
+        const fetchedSections = sectionsRes.data.data || sectionsRes.data || [];
+        const fetchedSubjects = subjectsRes.data.data || subjectsRes.data || [];
+        const fetchedFaculties = facultiesRes.data.data || facultiesRes.data || [];
+        const fetchedClassrooms = classroomsRes.data.data || classroomsRes.data || [];
+        const fetchedTimeSlots = timeSlotsRes.data.data || timeSlotsRes.data || [];
+
+        setBatches(fetchedBatches);
+        setBranches(fetchedBranches);
+        setSemesters(fetchedSemesters);
+        setSections(fetchedSections);
+        setSubjects(fetchedSubjects);
+        setFaculties(fetchedFaculties);
+        setClassrooms(fetchedClassrooms);
+        setTimeSlots(
+          fetchedTimeSlots.sort((a: TimeSlot, b: TimeSlot) => {
+            if (a.day === b.day) return a.period - b.period;
+            return days.indexOf(a.day) - days.indexOf(b.day);
+          })
+        );
+
+        console.log("Fetched Subjects:", fetchedSubjects);
+        console.log("Fetched Faculties:", fetchedFaculties);
+
+        // Notify if critical data is missing
+        if (
+          !fetchedBatches.length ||
+          !fetchedBranches.length ||
+          !fetchedSemesters.length ||
+          !fetchedSections.length
+        ) {
+          toast({
+            title: "Warning",
+            description:
+              "Some master data (batches, branches, semesters, or sections) is missing. Please ensure backend data is populated.",
+            variant: "destructive",
+          });
+        }
+      } catch (err: unknown) {
+        const error = err as AxiosError<{ message?: string }>;
+        const errorMessage =
+          error.response?.data?.message || error.message || "Failed to fetch master data";
+        setError(errorMessage);
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMasterData();
+  }, []);
+
+  // Determine the current period based on timeSlots
+  useEffect(() => {
+    if (timeSlots.length > 0) {
+      const todaySlots = timeSlots.filter((slot) => slot.day === currentDay);
+      const period = todaySlots.find((slot) => {
+        const start = new Date(`2025-05-28T${slot.startTime}:00+05:30`);
+        const end = new Date(`2025-05-28T${slot.endTime}:00+05:30`);
+        return currentTime >= start && currentTime <= end;
+      });
+      setCurrentPeriod(period ? period.period : null);
+    }
+  }, [timeSlots]);
+
+  // Reset dependent selections
+  useEffect(() => {
+    setSelectedSemester("");
+    setSelectedSection("");
+    setTimetableData({});
+  }, [selectedBatch, selectedBranch]);
+
+  useEffect(() => {
+    setSelectedSection("");
+    setTimetableData({});
+  }, [selectedSemester]);
+
+  // Log selectedSemester for debugging
+  useEffect(() => {
+    console.log("Selected Semester ID:", selectedSemester);
+  }, [selectedSemester]);
+
+  // Fetch timetable data when selection criteria change
+  useEffect(() => {
+    if (selectedBatch && selectedBranch && selectedSemester && selectedSection) {
+      const fetchTimetable = async () => {
+        setLoading(true);
+        try {
+          const res = await axiosInstance.get(`/timetable/section/${selectedSection}`);
+          const entries: TimetableEntry[] = res.data.data || res.data || [];
+          const timetable: TimetableData = {};
+          entries.forEach((entry) => {
+            const timeSlot = timeSlots.find((ts) => ts._id === entry.timeSlot);
+            if (timeSlot) {
+              const slotKey = `${timeSlot.day}-${timeSlot.period}`;
+              timetable[slotKey] = {
+                subject: entry.subject,
+                faculty: entry.faculty,
+                classroom: entry.classroom,
+              };
+            }
+          });
+          setTimetableData(timetable);
+          setConflicts([]);
+        } catch (err: unknown) {
+          const error = err as AxiosError<{ message?: string }>;
+          const errorMessage = error.response?.data?.message || "Failed to fetch timetable";
+          setError(errorMessage);
+          toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchTimetable();
+    }
+  }, [selectedBatch, selectedBranch, selectedSemester, selectedSection, timeSlots]);
+
+  // Helper to extract ID from batch or branch (handles both string and object)
+  const getId = (item: string | { _id: string }): string => {
+    return typeof item === "string" ? item : item._id;
+  };
+
+  // Filter semesters by selected batch and branch
+  const filteredSemesters = semesters.filter((semester) => {
+    const semesterBatchId = getId(semester.batch);
+    const semesterBranchId = getId(semester.branch);
+    console.log("Filtering Semester:", semester, "Batch ID:", semesterBatchId, "Branch ID:", semesterBranchId);
+    return semesterBatchId === selectedBatch && semesterBranchId === selectedBranch;
+  });
+
+  // Filter sections by selected semester
+  const filteredSections = sections.filter((section) => {
+    const sectionSemesterId = getId(section.semester);
+    return sectionSemesterId === selectedSemester;
+  });
+
+  // Filter subjects by selected semester
+  const filteredSubjects = subjects.filter((subject) => {
+    const subjectSemesterId = typeof subject.semester === "string" ? subject.semester : subject.semester?._id;
+    console.log("Filtering Subject:", subject, "Subject Semester ID:", subjectSemesterId, "Selected Semester ID:", selectedSemester);
+    return subjectSemesterId === selectedSemester;
+  });
+
+  // Filter faculties by selected subject
+  const filteredFaculties = slotData.subject
+    ? faculties.filter((faculty) => {
+        const subject = filteredSubjects.find((s) => s._id === slotData.subject);
+        const facultyId = typeof subject?.faculty === "string" ? subject?.faculty : subject?.faculty?._id;
+        console.log("Filtering Faculty for Subject:", subject, "Faculty ID:", facultyId, "Faculty List:", faculties);
+        return facultyId ? faculty._id === facultyId : false;
+      })
+    : faculties;
+
+  // Dynamically determine days and periods from timeSlots, with defaults if timeSlots is empty
+  const days = timeSlots.length > 0
+    ? Array.from(new Set(timeSlots.map((slot) => slot.day))).sort(
+        (a, b) => ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(a) -
+                  ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(b)
+      )
+    : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const periods = timeSlots.length > 0
+    ? Array.from(new Set(timeSlots.map((slot) => slot.period))).sort((a, b) => a - b)
+    : [1, 2, 3, 4, 5]; // Default periods if timeSlots is empty
+
+  const checkConflicts = async (
+    timeSlotId: string,
+    faculty: string,
+    classroom: string
+  ): Promise<string[]> => {
+    try {
+      const res = await axiosInstance.post("/timetable/check-conflicts", {
+        timeSlot: timeSlotId,
+        faculty,
+        classroom,
+      });
+      return res.data.conflicts || [];
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ message?: string }>;
+      const errorMessage = error.response?.data?.message || "Failed to check conflicts";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      return [errorMessage];
+    }
+  };
+
+  const assignSlot = async () => {
+    if (!selectedSlot || !slotData.subject || !slotData.faculty || !slotData.classroom) {
+      toast({ title: "Error", description: "Please fill all slot details", variant: "destructive" });
+      return;
+    }
+
+    const timeSlot = timeSlots.find((ts) => `${ts.day}-${ts.period}` === selectedSlot);
+    if (!timeSlot && timeSlots.length > 0) {
+      toast({ title: "Error", description: "Invalid time slot", variant: "destructive" });
+      return;
+    }
+
+    // If timeSlots is empty, we can't save to the backend, but we can still update the local state
+    if (timeSlots.length > 0) {
+      const slotConflicts = await checkConflicts(timeSlot!._id, slotData.faculty, slotData.classroom);
+      if (slotConflicts.length > 0) {
+        setConflicts(slotConflicts);
+        return;
+      }
+    }
+
+    setTimetableData({
+      ...timetableData,
+      [selectedSlot]: { ...slotData },
+    });
+
+    setSelectedSlot(null);
+    setSlotData({ subject: "", faculty: "", classroom: "" });
+    setConflicts([]);
+    toast({ title: "Success", description: "Slot assigned successfully" });
+  };
+
+  const saveTimetable = async () => {
+    if (!selectedBatch || !selectedBranch || !selectedSemester || !selectedSection) {
+      toast({ title: "Error", description: "Please select all criteria", variant: "destructive" });
+      return;
+    }
+
+    if (timeSlots.length === 0) {
+      toast({
+        title: "Error",
+        description: "No time slots defined. Cannot save timetable. Please contact the admin to add time slots.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const entries = Object.entries(timetableData)
+        .map(([slotKey, data]) => {
+          const timeSlot = timeSlots.find((ts) => `${ts.day}-${ts.period}` === slotKey);
+          if (!timeSlot) return null;
+          return {
+            section: selectedSection,
+            subject: data.subject,
+            faculty: data.faculty,
+            classroom: data.classroom,
+            timeSlot: timeSlot._id,
+          };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+      if (entries.length === 0) {
+        toast({ title: "Error", description: "No valid timetable entries to save", variant: "destructive" });
+        return;
+      }
+
+      const res = await axiosInstance.post<APIResponse<TimetableEntry[]>>("/timetable", { entries });
+
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || "Failed to save timetable");
+      }
+
+      toast({ title: "Success", description: "Timetable saved successfully" });
+
+      // Refresh timetable data
+      const updatedRes = await axiosInstance.get<APIResponse<TimetableEntry[]>>(
+        `/timetable/section/${selectedSection}`
+      );
+      const updatedEntries = updatedRes.data?.data || [];
+      const newTimetableData: TimetableData = {};
+      updatedEntries.forEach((entry) => {
+        const timeSlot = timeSlots.find((ts) => ts._id === entry.timeSlot);
+        if (timeSlot) {
+          const slotKey = `${timeSlot.day}-${timeSlot.period}`;
+          newTimetableData[slotKey] = {
+            subject: entry.subject,
+            faculty: entry.faculty,
+            classroom: entry.classroom,
+          };
+        }
+      });
+      setTimetableData(newTimetableData);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ message?: string }>;
+      const errorMessage = error.response?.data?.message || "Failed to save timetable";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSlotKey = (day: string, period: number) => `${day}-${period}`;
+
+  const getPeriodTime = (period: number) => {
+    if (timeSlots.length === 0) {
+      const placeholderTimes: { [key: number]: string } = {
+        1: "09:00-10:00",
+        2: "10:00-11:00",
+        3: "11:15-12:15",
+        4: "12:15-13:15",
+        5: "14:15-15:15",
+      };
+      return placeholderTimes[period] || `Period ${period}`;
+    }
+    const slot = timeSlots.find((ts) => ts.period === period);
+    return slot ? `${slot.startTime}-${slot.endTime}` : `Period ${period}`;
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {loading && (
+        <div className="flex justify-center items-center fixed inset-0 bg-black/20 backdrop-blur-sm z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center space-x-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <p className="text-lg font-medium text-gray-900">Loading...</p>
+          </div>
+        </div>
+      )}
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Timetable</h1>
+        <p className="text-gray-600">Create and assign timetables with automatic conflict detection</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Selection Criteria</CardTitle>
+              <CardDescription>Select the batch, branch, semester, and section</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="batch">Batch</Label>
+                <Select value={selectedBatch} onValueChange={setSelectedBatch}>
+                  <SelectTrigger id="batch">
+                    <SelectValue
+                      placeholder={batches.length === 0 ? "No batches available" : "Select batch"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {batches.length === 0 ? (
+                      <SelectItem value="no-batches" disabled>
+                        No batches available
+                      </SelectItem>
+                    ) : (
+                      batches.map((batch) => (
+                        <SelectItem key={batch._id} value={batch._id}>
+                          {batch.name} ({batch.startYear}-{batch.endYear})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="branch">Branch</Label>
+                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                  <SelectTrigger id="branch">
+                    <SelectValue
+                      placeholder={branches.length === 0 ? "No branches available" : "Select branch"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.length === 0 ? (
+                      <SelectItem value="no-branches" disabled>
+                        No branches available
+                      </SelectItem>
+                    ) : (
+                      branches.map((branch) => (
+                        <SelectItem key={branch._id} value={branch._id}>
+                          {branch.name} ({branch.branchCode})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="semester">Semester</Label>
+                <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+                  <SelectTrigger id="semester">
+                    <SelectValue
+                      placeholder={
+                        semesters.length === 0
+                          ? "No semesters available"
+                          : filteredSemesters.length === 0
+                          ? selectedBatch && selectedBranch
+                            ? "No semesters for selected batch and branch"
+                            : "Select batch and branch first"
+                          : "Select semester"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {semesters.length === 0 ? (
+                      <SelectItem value="no-semesters" disabled>
+                        No semesters available
+                      </SelectItem>
+                    ) : filteredSemesters.length === 0 ? (
+                      <SelectItem value="no-match" disabled>
+                        No semesters for selected batch and branch
+                      </SelectItem>
+                    ) : (
+                      filteredSemesters.map((semester) => (
+                        <SelectItem key={semester._id} value={semester._id}>
+                          {semester.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="section">Section</Label>
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                  <SelectTrigger id="section">
+                    <SelectValue
+                      placeholder={
+                        filteredSections.length === 0
+                          ? selectedSemester
+                            ? "No sections for selected semester"
+                            : "Select semester first"
+                          : "Select section"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredSections.length === 0 ? (
+                      <SelectItem value="no-sections" disabled>
+                        {selectedSemester ? "No sections for selected semester" : "Select semester first"}
+                      </SelectItem>
+                    ) : (
+                      filteredSections.map((section) => (
+                        <SelectItem key={section._id} value={section._id}>
+                          {section.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedBatch("");
+                  setSelectedBranch("");
+                  setSelectedSemester("");
+                  setSelectedSection("");
+                  setTimetableData({});
+                  setSelectedSlot(null);
+                  setSlotData({ subject: "", faculty: "", classroom: "" });
+                  setConflicts([]);
+                }}
+                className="w-full"
+              >
+                Reset Selections
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>Weekly Timetable</CardTitle>
+              <CardDescription>
+                {selectedBatch && selectedBranch && selectedSemester && selectedSection
+                  ? `${branches.find((b) => b._id === selectedBranch)?.name || "Unknown"} - ${
+                      semesters.find((s) => s._id === selectedSemester)?.name || "Unknown"
+                    } - Section ${sections.find((s) => s._id === selectedSection)?.name || "Unknown"} (${
+                      batches.find((b) => b._id === selectedBatch)?.name || "Unknown"
+                    })`
+                  : "Select criteria to view timetable"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {selectedBatch && selectedBranch && selectedSemester && selectedSection ? (
+                <>
+                  {timeSlots.length === 0 && (
+                    <Alert variant="warning" className="mb-4">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        No time slots defined. Using default periods. Please contact the admin to add time slots for accurate scheduling.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr>
+                          <th className="border border-gray-300 p-2 bg-gray-50">Time</th>
+                          {days.map((day) => (
+                            <th
+                              key={day}
+                              className={`border border-gray-300 p-2 bg-gray-50 min-w-[150px] ${
+                                day === currentDay ? "bg-blue-100" : ""
+                              }`}
+                            >
+                              {day}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {periods.map((period) => (
+                          <tr key={period}>
+                            <td
+                              className={`border border-gray-300 p-2 font-medium bg-gray-50 ${
+                                period === currentPeriod ? "bg-blue-100" : ""
+                              }`}
+                            >
+                              <div className="text-sm">{getPeriodTime(period)}</div>
+                              <div className="text-xs text-gray-500">Period {period}</div>
+                            </td>
+                            {days.map((day) => {
+                              const slotKey = getSlotKey(day, period);
+                              const slotInfo = timetableData[slotKey];
+                              return (
+                                <td
+                                  key={slotKey}
+                                  className={`border border-gray-300 p-2 cursor-pointer hover:bg-gray-100 transition-colors ${
+                                    day === currentDay && period === currentPeriod ? "bg-blue-200" : ""
+                                  }`}
+                                  onClick={() => {
+                                    if (!selectedBatch || !selectedBranch || !selectedSemester || !selectedSection) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Please select all criteria before assigning slots",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+                                    setSelectedSlot(slotKey);
+                                  }}
+                                >
+                                  {slotInfo ? (
+                                    <div className="space-y-1">
+                                      <Badge variant="default" className="text-xs">
+                                        {subjects.find((s) => s._id === slotInfo.subject)?.code || "Unknown"}
+                                      </Badge>
+                                      <div className="text-xs text-gray-600">
+                                        {faculties.find((f) => f._id === slotInfo.faculty)?.name || "Unknown"}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {classrooms.find((c) => c._id === slotInfo.classroom)?.name || "Unknown"}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-center text-gray-400 text-sm">Click to assign</div>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  Please select batch, branch, semester, and section to create timetable
+                </div>
+              )}
+
+              {Object.keys(timetableData).length > 0 && (
+                <div className="mt-6 flex justify-end">
+                  <Button onClick={saveTimetable}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Timetable
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Modal for Slot Assignment */}
+      <Dialog open={!!selectedSlot} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedSlot(null);
+          setSlotData({ subject: "", faculty: "", classroom: "" });
+          setConflicts([]);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Assign Slot: {selectedSlot?.replace("-", ", Period ")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="subject">Subject</Label>
+              <Select
+                value={slotData.subject}
+                onValueChange={(value) => {
+                  const subject = filteredSubjects.find((s) => s._id === value);
+                  const facultyId = typeof subject?.faculty === "string" ? subject?.faculty : subject?.faculty?._id;
+                  setSlotData({ ...slotData, subject: value, faculty: facultyId || "" });
+                }}
+              >
+                <SelectTrigger id="subject" aria-label="Select subject">
+                  <SelectValue placeholder={filteredSubjects.length === 0 ? "No subjects available for this semester" : "Select subject"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredSubjects.length === 0 ? (
+                    <SelectItem value="no-subjects" disabled>
+                      No subjects available for this semester
+                    </SelectItem>
+                  ) : (
+                    filteredSubjects.map((subject) => (
+                      <SelectItem key={subject._id} value={subject._id}>
+                        {subject.name} ({subject.code})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="faculty">Faculty</Label>
+              <Select
+                value={slotData.faulty}
+                onValueChange={(value) => setSlotData({ ...slotData, faculty: value })}
+              >
+                <SelectTrigger id="faculty" aria-label="Select faculty">
+                  <SelectValue
+                    placeholder={
+                      filteredFaculties.length === 0
+                        ? slotData.subject
+                          ? "No faculty available for selected subject"
+                          : "Select a subject first"
+                        : "Select faculty"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredFaculties.length === 0 ? (
+                    <SelectItem value="no-faculties" disabled>
+                      {slotData.subject ? "No faculty available for selected subject" : "Select a subject first"}
+                    </SelectItem>
+                  ) : (
+                    filteredFaculties.map((faculty) => (
+                      <SelectItem key={faculty._id} value={faculty._id}>
+                        {faculty.name} ({faculty.email})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="classroom">Room</Label>
+              <Select
+                value={slotData.classroom}
+                onValueChange={(value) => setSlotData({ ...slotData, classroom: value })}
+              >
+                <SelectTrigger id="classroom" aria-label="Select classroom">
+                  <SelectValue placeholder={classrooms.length === 0 ? "No rooms available" : "Select room"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {classrooms.length === 0 ? (
+                    <SelectItem value="no-classrooms" disabled>
+                      No rooms available
+                    </SelectItem>
+                  ) : (
+                    classrooms.map((classroom) => (
+                      <SelectItem key={classroom._id} value={classroom._id}>
+                        {classroom.name} (Capacity: {classroom.capacity})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {conflicts.length > 0 && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <ul className="list-disc list-inside">
+                    {conflicts.map((conflict, index) => (
+                      <li key={index}>{conflict}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedSlot(null);
+                setSlotData({ subject: "", faculty: "", classroom: "" });
+                setConflicts([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={assignSlot}>
+              <Check className="h-4 w-4 mr-2" />
+              Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
