@@ -7,7 +7,7 @@ import facultyRoutes from './facultyRoutes.js';
 import classroomRoutes from './classroomRoutes.js';
 import timetableRoutes from './timetableRoutes.js';
 import timeslotRoutes from './timeslotRoutes.js';
-import authRoutes from './authroutes.js';
+import authRoutes from './authRoutes.js';
 import sectionRoutes from './sectionRoutes.js';
 
 const router = express.Router();
