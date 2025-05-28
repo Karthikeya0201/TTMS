@@ -12,6 +12,10 @@ const branchSchema = new mongoose.Schema({
     trim: true,
     unique: true,
   },
+  batches: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+  }],
 }, {
   timestamps: true,
 });

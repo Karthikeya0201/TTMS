@@ -19,7 +19,6 @@ const SemesterSchema = new mongoose.Schema({
   },
 }, {
   timestamps: true,
-  indexes: [{ key: { name: 1, batch: 1, branch: 1 }, unique: true }],
 });
 const Semester = mongoose.models.Semester || mongoose.model('Semester', SemesterSchema);
 

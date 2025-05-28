@@ -3,24 +3,23 @@ import mongoose from 'mongoose';
 const subjectSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Subject name is required'],
-    trim: true,
+    required: true,
   },
   code: {
     type: String,
-    required: [true, 'Subject code is required'],
-    trim: true,
+    required: true,
     unique: true,
   },
   semester: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Semester',
-    required: [true, 'Semester is required'],
+    required: true,
   },
-}, {
-  timestamps: true,
+  faculty: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Faculty',
+    required: false, // Faculty might be optional
+  },
 });
 
-const Subject = mongoose.model('Subject', subjectSchema);
-
-export default Subject;
+export default mongoose.model('Subject', subjectSchema);

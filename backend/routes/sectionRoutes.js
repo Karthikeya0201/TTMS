@@ -6,6 +6,6 @@ import { validate } from '../middleware/validate.js';
 const router = express.Router();
 
 router.get('/',  sectionController.getAllSections);
-router.post('/', auth('admin'), validate('createSection'), sectionController.createSection);
+router.post('/', validate('createSection'), sectionController.createSection);
 
 export default router;
