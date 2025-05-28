@@ -66,3 +66,11 @@ npm install --force
 
 ```
 
+### 🌐 Deployment
+
+- **Frontend (Vercel):** [https://timetablemanage.vercel.app](https://timetablemanage.vercel.app)  
+- **Backend (Render):** [https://ttms.onrender.com](https://ttms.onrender.com)
+
+### 🔗 GitHub
+
+- **Repository:** [https://github.com/Karthikeya0201/TTMS](https://github.com/Karthikeya0201/TTMS)
