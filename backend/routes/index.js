@@ -7,7 +7,7 @@ import facultyRoutes from './facultyRoutes.js';
 import classroomRoutes from './classroomRoutes.js';
 import timetableRoutes from './timetableRoutes.js';
 import timeslotRoutes from './timeslotRoutes.js';
-import authroutes from './authroutes.js';
+import authRoutes from './authroutes.js';
 import sectionRoutes from './sectionRoutes.js';
 
 const router = express.Router();
@@ -20,7 +20,7 @@ router.use('/faculties', facultyRoutes);
 router.use('/classrooms', classroomRoutes);
 router.use('/timetable', timetableRoutes);
 router.use('/timeslots', timeslotRoutes);
-router.use('/auth', authroutes);
+router.use('/auth', authRoutes);
 router.use('/sections', sectionRoutes);
 
 export default router;

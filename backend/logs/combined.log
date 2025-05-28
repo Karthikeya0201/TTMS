@@ -1327,3 +1327,40 @@
 {"level":"info","message":"GET /api/faculties","timestamp":"2025-05-28T17:20:00.732Z"}
 {"level":"info","message":"GET /api/timeslots","timestamp":"2025-05-28T17:20:00.735Z"}
 {"level":"info","message":"GET /api/timetable/section/6836e59286877f7190cbfd01","timestamp":"2025-05-28T17:20:07.401Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-05-28T17:24:13.871Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-05-28T17:29:21.163Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-05-28T17:30:20.162Z"}
+{"level":"info","message":"POST /api/auth/login","timestamp":"2025-05-28T17:31:23.061Z"}
+{"level":"info","message":"GET /api/stats","timestamp":"2025-05-28T17:31:25.251Z"}
+{"level":"info","message":"GET /api/stats","timestamp":"2025-05-28T17:31:25.258Z"}
+{"level":"info","message":"GET /api/batches","timestamp":"2025-05-28T17:31:32.529Z"}
+{"level":"info","message":"GET /api/semesters","timestamp":"2025-05-28T17:31:32.534Z"}
+{"level":"info","message":"GET /api/sections","timestamp":"2025-05-28T17:31:32.539Z"}
+{"level":"info","message":"GET /api/branches","timestamp":"2025-05-28T17:31:32.544Z"}
+{"level":"info","message":"GET /api/subjects","timestamp":"2025-05-28T17:31:32.548Z"}
+{"level":"info","message":"GET /api/faculties","timestamp":"2025-05-28T17:31:32.552Z"}
+{"level":"info","message":"GET /api/classrooms","timestamp":"2025-05-28T17:31:32.594Z"}
+{"level":"info","message":"GET /api/branches","timestamp":"2025-05-28T17:31:32.597Z"}
+{"level":"info","message":"GET /api/batches","timestamp":"2025-05-28T17:31:32.628Z"}
+{"level":"info","message":"GET /api/subjects","timestamp":"2025-05-28T17:31:32.631Z"}
+{"level":"info","message":"GET /api/classrooms","timestamp":"2025-05-28T17:31:32.647Z"}
+{"level":"info","message":"GET /api/sections","timestamp":"2025-05-28T17:31:32.657Z"}
+{"level":"info","message":"GET /api/semesters","timestamp":"2025-05-28T17:31:32.972Z"}
+{"level":"info","message":"GET /api/faculties","timestamp":"2025-05-28T17:31:32.993Z"}
+{"level":"info","message":"GET /api/faculties","timestamp":"2025-05-28T17:31:39.303Z"}
+{"level":"info","message":"GET /api/batches","timestamp":"2025-05-28T17:31:39.307Z"}
+{"level":"info","message":"GET /api/semesters","timestamp":"2025-05-28T17:31:39.320Z"}
+{"level":"info","message":"GET /api/branches","timestamp":"2025-05-28T17:31:39.334Z"}
+{"level":"info","message":"GET /api/sections","timestamp":"2025-05-28T17:31:39.340Z"}
+{"level":"info","message":"GET /api/subjects","timestamp":"2025-05-28T17:31:39.352Z"}
+{"level":"info","message":"GET /api/classrooms","timestamp":"2025-05-28T17:31:39.399Z"}
+{"level":"info","message":"GET /api/timeslots","timestamp":"2025-05-28T17:31:39.435Z"}
+{"level":"info","message":"GET /api/batches","timestamp":"2025-05-28T17:31:39.463Z"}
+{"level":"info","message":"GET /api/branches","timestamp":"2025-05-28T17:31:39.480Z"}
+{"level":"info","message":"GET /api/faculties","timestamp":"2025-05-28T17:31:39.484Z"}
+{"level":"info","message":"GET /api/semesters","timestamp":"2025-05-28T17:31:39.504Z"}
+{"level":"info","message":"GET /api/classrooms","timestamp":"2025-05-28T17:31:39.515Z"}
+{"level":"info","message":"GET /api/subjects","timestamp":"2025-05-28T17:31:39.518Z"}
+{"level":"info","message":"GET /api/timeslots","timestamp":"2025-05-28T17:31:39.587Z"}
+{"level":"info","message":"GET /api/sections","timestamp":"2025-05-28T17:31:39.765Z"}
+{"level":"info","message":"GET /api/timetable/section/6836e59286877f7190cbfd01","timestamp":"2025-05-28T17:31:48.169Z"}
