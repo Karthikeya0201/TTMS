@@ -41,4 +41,15 @@ TTMS/
 git clone https://github.com/yourusername/timetable-management.git
 
 cd backend
-npm install
+npm install --force
+
+cd ../frontend
+npm install --force
+
+```
+
+
+### Start the Backend
+
+```bash
+cd backend
