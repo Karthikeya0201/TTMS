@@ -70,7 +70,7 @@ export default function LoginPage() {
       if (response.data.user.role === "admin") {
         router.push("/admin/dashboard");
       } else if (response.data.user.role === "faculty") {
-        router.push("/faculty/dashboard");
+        router.push("/faculty/view");
       } else {
         throw new Error('Invalid role');
       }

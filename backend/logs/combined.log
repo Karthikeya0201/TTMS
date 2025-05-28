@@ -1364,3 +1364,7 @@
 {"level":"info","message":"GET /api/timeslots","timestamp":"2025-05-28T17:31:39.587Z"}
 {"level":"info","message":"GET /api/sections","timestamp":"2025-05-28T17:31:39.765Z"}
 {"level":"info","message":"GET /api/timetable/section/6836e59286877f7190cbfd01","timestamp":"2025-05-28T17:31:48.169Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-05-28T17:35:00.971Z"}
+{"level":"info","message":"POST /api/auth/login","timestamp":"2025-05-28T17:35:57.373Z"}
+{"level":"info","message":"GET /api/stats","timestamp":"2025-05-28T17:35:58.844Z"}
+{"level":"info","message":"GET /api/stats","timestamp":"2025-05-28T17:35:58.854Z"}

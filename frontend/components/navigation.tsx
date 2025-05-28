@@ -43,20 +43,45 @@ export function Navigation() {
             </Link>
 
             <div className="hidden md:flex space-x-4">
-              {(pathname!="/" && pathname!="/login") && (navItems.map((item) => {
-                const Icon = item.icon
-                return (
-                  <Link key={item.href} href={item.href}>
-                    <Button
-                      variant={pathname === item.href ? "default" : "ghost"}
-                      className={cn("flex items-center space-x-2", pathname === item.href && "bg-blue-600 text-white")}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Button>
-                  </Link>
-                )
-              }))}
+              {(pathname !== "/" && pathname !== "/login") && (
+                <>
+                  {pathname === "/timetable/view" ? (
+                    navItems
+                      .filter(item => item.href === "/timetable/view")
+                      .map((item) => {
+                        const Icon = item.icon
+                        return (
+                          <Link key={item.href} href={item.href}>
+                            <Button
+                              variant="default"
+                              className="flex items-center space-x-2 bg-blue-600 text-white"
+                            >
+                              <Icon className="h-4 w-4" />
+                              <span>{item.label}</span>
+                            </Button>
+                          </Link>
+                        )
+                      })
+                  ) : (
+                    navItems.map((item) => {
+                      const Icon = item.icon
+                      return (
+                        <Link key={item.href} href={item.href}>
+                          <Button
+                            variant={pathname === item.href ? "default" : "ghost"}
+                            className={cn("flex items-center space-x-2", pathname === item.href && "bg-blue-600 text-white")}
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span>{item.label}</span>
+                          </Button>
+                        </Link>
+                      )
+                    })
+                  )}
+                </>
+              )}
+
+
             </div>
           </div>
 
