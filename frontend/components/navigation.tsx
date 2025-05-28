@@ -45,9 +45,9 @@ export function Navigation() {
             <div className="hidden md:flex space-x-4">
               {(pathname !== "/" && pathname !== "/login") && (
                 <>
-                  {pathname === "/timetable/view" ? (
+                  {pathname === "/faculty/timetable/view" ? (
                     navItems
-                      .filter(item => item.href === "/timetable/view")
+                      .filter(item => item.href === "/faculty/timetable/view")
                       .map((item) => {
                         const Icon = item.icon
                         return (

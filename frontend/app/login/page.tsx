@@ -1,25 +1,35 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import axios from "axios";
 import { toast } from "@/components/ui/use-toast";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
-// Define the shape of form data
 interface FormData {
   email: string;
   password: string;
   role: string;
 }
 
-// Define the expected API response
 interface LoginResponse {
   token: string;
   user: {
@@ -31,16 +41,16 @@ interface LoginResponse {
 }
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
     role: "",
   });
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -51,13 +61,10 @@ export default function LoginPage() {
         `${API_BASE_URL}/auth/login`,
         formData,
         {
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { "Content-Type": "application/json" },
         }
       );
 
-      // Store token and user in localStorage
       localStorage.setItem("auth-token", response.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
 
@@ -66,16 +73,19 @@ export default function LoginPage() {
         description: `Welcome back, ${response.data.user.name}!`,
       });
 
-      // Redirect based on role
-      if (response.data.user.role === "admin") {
-        router.push("/admin/dashboard");
-      } else if (response.data.user.role === "faculty") {
-        router.push("/faculty/view");
-      } else {
-        throw new Error('Invalid role');
+      switch (response.data.user.role) {
+        case "admin":
+          router.push("/admin/dashboard");
+          break;
+        case "faculty":
+          router.push("/faculty/view");
+          break;
+        default:
+          throw new Error("Invalid role");
       }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || "Login failed. Please try again.";
+      const errorMessage =
+        error.response?.data?.error || "Login failed. Please try again.";
       toast({
         title: "Error",
         description: errorMessage,
@@ -101,13 +111,19 @@ export default function LoginPage() {
         <Card className="shadow-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
-            <CardDescription className="text-center">Enter your credentials to access the system</CardDescription>
+            <CardDescription className="text-center">
+              Enter your credentials to access the system
+            </CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
-                <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => handleInputChange("role", value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
@@ -138,7 +154,9 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
                     required
                   />
                   <Button
@@ -160,9 +178,14 @@ export default function LoginPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <input type="checkbox" id="remember" className="rounded" />
-                  <Label htmlFor="remember" className="text-sm">Remember me</Label>
+                  <Label htmlFor="remember" className="text-sm">
+                    Remember me
+                  </Label>
                 </div>
-                <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-blue-600 hover:underline"
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -182,15 +205,20 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-          </CardContent>
-           <div className="mt-4 text-sm text-center text-gray-600">
-          <p className="font-medium">Demo Credentials</p>
-          <p><span className="font-semibold">Admin:</span> admin@institute.edu / admin123</p>
-          <p><span className="font-semibold">Faculty:</span> faculty@institute.edu / faculty123</p>
-        </div>
-        </Card>
-       
 
+            <div className="mt-4 text-sm text-center text-gray-600">
+              <p className="font-medium">Demo Credentials</p>
+              <p>
+                <span className="font-semibold">Admin:</span>{" "}
+                admin@institute.edu / admin123
+              </p>
+              <p>
+                <span className="font-semibold">Faculty:</span>{" "}
+                faculty@institute.edu / faculty123
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="mt-6 text-center">
           <Link href="/" className="text-sm text-blue-600 hover:underline">

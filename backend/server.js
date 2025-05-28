@@ -14,7 +14,12 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors()); // Enable CORS for frontend communication
+app.use(
+  cors({
+    origin: "https://timetablemanage.vercel.app",
+    credentials: true, // if using cookies or sessions
+  })
+);
 app.use(express.json()); // Parse JSON request bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 app.use((req, res, next) => {
