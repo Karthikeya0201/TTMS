@@ -16,7 +16,8 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: "https://timetablemanage.vercel.app",
+    origin: ["https://timetablemanage.vercel.app", "http://localhost:3000"], // Replace with your frontend URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true, // if using cookies or sessions
   })
 );

@@ -127,9 +127,9 @@ export default function CreateTimetablePage() {
   const [currentPeriod, setCurrentPeriod] = useState<number | null>(null)
   const router = useRouter()
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api"
+  const API_BASE_URL = "https://ttms.onrender.com/api"
   const currentDay = "Thursday" // Current day (May 29, 2025)
-  const currentTime = new Date("2025-05-29T00:59:00+05:30") // Updated to 12:59 AM IST
+  const currentTime = new Date("2025-05-29T01:10:00+05:30") // Updated to 01:10 AM IST
 
   // Configure Axios with auth header
   const axiosInstance = axios.create({
@@ -144,6 +144,7 @@ export default function CreateTimetablePage() {
   axiosInstance.interceptors.request.use(
     (config) => {
       const token = localStorage.getItem("auth-token")
+      console.log("Auth token:", token)
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       } else {
@@ -211,6 +212,7 @@ export default function CreateTimetablePage() {
             return days.indexOf(a.day) - days.indexOf(b.day)
           })
         )
+        console.log("Fetched timeSlots:", fetchedTimeSlots)
 
         if (
           !fetchedBatches.length ||
@@ -455,6 +457,7 @@ export default function CreateTimetablePage() {
     }
 
     const timeSlot = timeSlots.find((ts) => `${ts.day}-${ts.period}` === selectedSlot)
+    console.log("Time slot lookup:", { selectedSlot, timeSlot, timeSlots })
     if (!timeSlot) {
       console.log("Validation failed: Invalid time slot", selectedSlot)
       toast({
@@ -539,6 +542,7 @@ export default function CreateTimetablePage() {
       })
     } finally {
       setAssignLoading(false)
+      console.log("Assign loading reset to false")
     }
   }
 
@@ -694,7 +698,10 @@ export default function CreateTimetablePage() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="batch">Batch</Label>
-                <Select value={selectedBatch} onValueChange={setSelectedBatch}>
+                <Select value={selectedBatch} onValueChange={(value) => {
+                  console.log("Batch selected:", value);
+                  setSelectedBatch(value);
+                }}>
                   <SelectTrigger id="batch">
                     <SelectValue
                       placeholder={batches.length === 0 ? "No batches available" : "Select batch"}
@@ -718,7 +725,10 @@ export default function CreateTimetablePage() {
 
               <div>
                 <Label htmlFor="branch">Branch</Label>
-                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                <Select value={selectedBranch} onValueChange={(value) => {
+                  console.log("Branch selected:", value);
+                  setSelectedBranch(value);
+                }}>
                   <SelectTrigger id="branch">
                     <SelectValue
                       placeholder={branches.length === 0 ? "No branches available" : "Select branch"}
@@ -742,7 +752,10 @@ export default function CreateTimetablePage() {
 
               <div>
                 <Label htmlFor="semester">Semester</Label>
-                <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+                <Select value={selectedSemester} onValueChange={(value) => {
+                  console.log("Semester selected:", value);
+                  setSelectedSemester(value);
+                }}>
                   <SelectTrigger id="semester">
                     <SelectValue
                       placeholder={
@@ -778,7 +791,10 @@ export default function CreateTimetablePage() {
 
               <div>
                 <Label htmlFor="section">Section</Label>
-                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                <Select value={selectedSection} onValueChange={(value) => {
+                  console.log("Section selected:", value);
+                  setSelectedSection(value);
+                }}>
                   <SelectTrigger id="section">
                     <SelectValue
                       placeholder={
@@ -815,6 +831,7 @@ export default function CreateTimetablePage() {
                     <Select
                       value={slotData.subject}
                       onValueChange={(value) => {
+                        console.log("Subject selected:", value);
                         setSlotData({
                           ...slotData,
                           subject: value,
@@ -848,6 +865,7 @@ export default function CreateTimetablePage() {
                     <Select
                       value={slotData.faculty}
                       onValueChange={(value) => {
+                        console.log("Faculty selected:", value);
                         setSlotData({ ...slotData, faculty: value })
                         setConflicts([])
                       }}
@@ -883,6 +901,7 @@ export default function CreateTimetablePage() {
                     <Select
                       value={slotData.classroom}
                       onValueChange={(value) => {
+                        console.log("Classroom selected:", value);
                         setSlotData({ ...slotData, classroom: value })
                         setConflicts([])
                       }}
@@ -922,7 +941,10 @@ export default function CreateTimetablePage() {
 
                   <div className="flex gap-2">
                     <Button
-                      onClick={assignSlot}
+                      onClick={() => {
+                        console.log("Assign button clicked");
+                        assignSlot();
+                      }}
                       className="flex-1"
                       disabled={assignLoading}
                     >
@@ -1060,6 +1082,7 @@ export default function CreateTimetablePage() {
                                       })
                                       return
                                     }
+                                    console.log("Setting selected slot:", slotKey);
                                     setSelectedSlot(slotKey)
                                     if (slotInfo) {
                                       setSlotData({
