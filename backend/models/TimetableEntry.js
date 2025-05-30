@@ -1,6 +1,4 @@
-// models/TimetableEntry.js
-import mongoose from "mongoose";
-
+import mongoose from 'mongoose';
 const timetableEntrySchema = new mongoose.Schema(
   {
     section: { type: mongoose.Schema.Types.ObjectId, ref: "Section", required: true },
@@ -9,7 +7,13 @@ const timetableEntrySchema = new mongoose.Schema(
     classroom: { type: mongoose.Schema.Types.ObjectId, ref: "Classroom", required: true },
     timeSlot: { type: mongoose.Schema.Types.ObjectId, ref: "TimeSlot", required: true },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    indexes: [
+      { key: { timeSlot: 1, faculty: 1 } },
+      { key: { timeSlot: 1, classroom: 1 } },
+      { key: { timeSlot: 1, section: 1 } },
+    ],
+  }
 );
-
-export default mongoose.model("TimetableEntry", timetableEntrySchema);
+export default mongoose.models.TimetableEntry || mongoose.model('TimetableEntry', timetableEntrySchema);

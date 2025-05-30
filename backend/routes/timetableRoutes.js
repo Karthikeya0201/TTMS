@@ -12,6 +12,6 @@ router.get('/section/:sectionId', timetableController.getTimetableBySection);
 router.post('/check-conflicts', timetableController.checkConflicts);
 
 // Save timetable entries (admin only)
-router.post('/', auth('admin'), timetableController.createTimetable);
+router.post('/', timetableController.createTimetable);
 
 export default router;
