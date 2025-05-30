@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -78,12 +78,6 @@ interface TimetableEntry {
   updatedAt?: string;
 }
 
-interface APIResponse<T> {
-  success?: boolean;
-  data: T;
-  message?: string;
-}
-
 interface SlotData {
   subject: string;
   subjectName: string;
@@ -95,6 +89,12 @@ interface SlotData {
 }
 
 type TimetableData = { [slotKey: string]: SlotData };
+
+interface APIResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
 
 export default function CreateTimetablePage() {
   const [selectedBatch, setSelectedBatch] = useState<string>("")
@@ -128,8 +128,8 @@ export default function CreateTimetablePage() {
   const router = useRouter()
 
   const API_BASE_URL = "https://ttms.onrender.com/api"
-  const currentDay = "Thursday" // Current day (May 29, 2025)
-  const currentTime = new Date("2025-05-29T01:10:00+05:30") // Updated to 01:10 AM IST
+  const currentDay = "Thursday" // May 31, 2025
+  const currentTime = new Date("2025-05-31T00:30:00+05:30") // 12:30 AM IST
 
   // Configure Axios with auth header
   const axiosInstance = axios.create({
@@ -140,11 +140,10 @@ export default function CreateTimetablePage() {
     validateStatus: (status) => status >= 200 && status < 500,
   })
 
-  // Add interceptor to include token in requests
+  // Add interceptor to include token
   axiosInstance.interceptors.request.use(
     (config) => {
       const token = localStorage.getItem("auth-token")
-      console.log("Auth token:", token)
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       } else {
@@ -153,7 +152,6 @@ export default function CreateTimetablePage() {
       return config
     },
     (error) => {
-      console.error("Axios Request Interceptor Error:", error)
       toast({
         title: "Authentication Error",
         description: error.message,
@@ -164,108 +162,86 @@ export default function CreateTimetablePage() {
     }
   )
 
-  // Fetch master data from backend
-  useEffect(() => {
-    const fetchMasterData = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const [
-          batchesRes,
-          branchesRes,
-          semestersRes,
-          sectionsRes,
-          subjectsRes,
-          facultiesRes,
-          classroomsRes,
-          timeSlotsRes,
-        ] = await Promise.all([
-          axiosInstance.get("/batches"),
-          axiosInstance.get("/branches"),
-          axiosInstance.get("/semesters"),
-          axiosInstance.get("/sections"),
-          axiosInstance.get("/subjects"),
-          axiosInstance.get("/faculties"),
-          axiosInstance.get("/classrooms"),
-          axiosInstance.get("/timeslots"),
-        ])
+  // Fetch master data
+  const fetchMasterData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [
+        batchesRes,
+        branchesRes,
+        semestersRes,
+        sectionsRes,
+        subjectsRes,
+        facultiesRes,
+        classroomsRes,
+        timeSlotsRes,
+      ] = await Promise.all([
+        axiosInstance.get("/batches"),
+        axiosInstance.get("/branches"),
+        axiosInstance.get("/semesters"),
+        axiosInstance.get("/sections"),
+        axiosInstance.get("/subjects"),
+        axiosInstance.get("/faculties"),
+        axiosInstance.get("/classrooms"),
+        axiosInstance.get("/timeslots"),
+      ])
 
-        const fetchedBatches = batchesRes.data?.data || batchesRes.data || []
-        const fetchedBranches = branchesRes.data?.data || branchesRes.data || []
-        const fetchedSemesters = semestersRes.data?.data || semestersRes.data || []
-        const fetchedSections = sectionsRes.data?.data || sectionsRes.data || []
-        const fetchedSubjects = subjectsRes.data?.data || subjectsRes.data || []
-        const fetchedFaculties = facultiesRes.data?.data || facultiesRes.data || []
-        const fetchedClassrooms = classroomsRes.data?.data || classroomsRes.data || []
-        const fetchedTimeSlots = timeSlotsRes.data?.data || timeSlotsRes.data || []
+      const fetchedData = [
+        { data: batchesRes.data.data || batchesRes.data, setter: setBatches, name: "batches" },
+        { data: branchesRes.data.data || branchesRes.data, setter: setBranches, name: "branches" },
+        { data: semestersRes.data.data || semestersRes.data, setter: setSemesters, name: "semesters" },
+        { data: sectionsRes.data.data || sectionsRes.data, setter: setSections, name: "sections" },
+        { data: subjectsRes.data.data || subjectsRes.data, setter: setSubjects, name: "subjects" },
+        { data: facultiesRes.data.data || facultiesRes.data, setter: setFaculties, name: "faculties" },
+        { data: classroomsRes.data.data || classroomsRes.data, setter: setClassrooms, name: "classrooms" },
+        { data: timeSlotsRes.data.data || timeSlotsRes.data, setter: setTimeSlots, name: "time slots" },
+      ]
 
-        setBatches(fetchedBatches)
-        setBranches(fetchedBranches)
-        setSemesters(fetchedSemesters)
-        setSections(fetchedSections)
-        setSubjects(fetchedSubjects)
-        setFaculties(fetchedFaculties)
-        setClassrooms(fetchedClassrooms)
-        setTimeSlots(
-          fetchedTimeSlots.sort((a: TimeSlot, b: TimeSlot) => {
-            if (a.day === b.day) return a.period - b.period
-            return days.indexOf(a.day) - days.indexOf(b.day)
-          })
-        )
-        console.log("Fetched timeSlots:", fetchedTimeSlots)
-
-        if (
-          !fetchedBatches.length ||
-          !fetchedBranches.length ||
-          !fetchedSemesters.length ||
-          !fetchedSections.length ||
-          !fetchedSubjects.length ||
-          !fetchedFaculties.length ||
-          !fetchedClassrooms.length ||
-          !fetchedTimeSlots.length
-        ) {
-          const missingData = []
-          if (!fetchedBatches.length) missingData.push("batches")
-          if (!fetchedBranches.length) missingData.push("branches")
-          if (!fetchedSemesters.length) missingData.push("semesters")
-          if (!fetchedSections.length) missingData.push("sections")
-          if (!fetchedSubjects.length) missingData.push("subjects")
-          if (!fetchedFaculties.length) missingData.push("faculties")
-          if (!fetchedClassrooms.length) missingData.push("classrooms")
-          if (!fetchedTimeSlots.length) missingData.push("time slots")
+      fetchedData.forEach(({ data, setter, name }) => {
+        setter(data)
+        if (!data.length) {
           toast({
             title: "Warning",
-            description: `Missing critical data: ${missingData.join(", ")}. Please ensure backend data is populated.`,
+            description: `No ${name} available. Please ensure backend data is populated.`,
             variant: "destructive",
           })
         }
-      } catch (err: unknown) {
-        const error = err as AxiosError<{ message?: string }>
-        const errorMessage =
-          error.response?.data?.message || error.message || "Failed to fetch master data"
-        console.error("Fetch Master Data Error:", errorMessage)
-        setError(errorMessage)
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
+      })
 
-    fetchMasterData()
+      setTimeSlots((prev) =>
+        prev.sort((a, b) => {
+          const daysOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+          if (a.day === b.day) return a.period - b.period
+          return daysOrder.indexOf(a.day) - daysOrder.indexOf(b.day)
+        })
+      )
+    } catch (err) {
+      const error = err as AxiosError<{ message?: string }>
+      const errorMessage = error.response?.data?.message || error.message || "Failed to fetch master data"
+      setError(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
-  // Determine the current period based on timeSlots
+  useEffect(() => {
+    fetchMasterData()
+  }, [fetchMasterData])
+
+  // Determine current period
   useEffect(() => {
     if (timeSlots.length > 0) {
       const todaySlots = timeSlots.filter((slot) => slot.day === currentDay)
       const period = todaySlots.find((slot) => {
         try {
-          const start = new Date(`2025-05-29T${slot.startTime}:00+05:30`)
-          const end = new Date(`2025-05-29T${slot.endTime}:00+05:30`)
+          const start = new Date(`2025-05-31T${slot.startTime}:00+05:30`)
+          const end = new Date(`2025-05-31T${slot.endTime}:00+05:30`)
           return currentTime >= start && currentTime <= end
         } catch (error) {
           console.error("Error parsing time slot:", error)
@@ -276,7 +252,7 @@ export default function CreateTimetablePage() {
     } else {
       setCurrentPeriod(null)
     }
-  }, [timeSlots, currentDay, currentTime])
+  }, [timeSlots])
 
   // Reset dependent selections
   useEffect(() => {
@@ -290,97 +266,89 @@ export default function CreateTimetablePage() {
     setTimetableData({})
   }, [selectedSemester])
 
-  // Fetch timetable data when selection criteria change
-  useEffect(() => {
+  // Fetch timetable data
+  const fetchTimetable = useCallback(async () => {
     if (selectedBatch && selectedBranch && selectedSemester && selectedSection) {
-      const fetchTimetable = async () => {
-        setLoading(true)
-        try {
-          const res = await axiosInstance.get(`/timetable/section/${selectedSection}`)
-          if (!res.data.success && res.status !== 200) {
-            throw new Error(res.data.message || "Failed to fetch timetable")
-          }
-          const entries: TimetableEntry[] = res.data?.data || res.data || []
-          const timetable: TimetableData = {}
-          entries.forEach((entry) => {
-            const timeSlot = timeSlots.find((ts) => ts._id === entry.timeSlot)
-            if (timeSlot) {
-              const slotKey = `${timeSlot.day}-${timeSlot.period}`
-              const subject = subjects.find((s) => s._id === entry.subject)
-              const faculty = faculties.find((f) => f._id === entry.faculty)
-              const classroom = classrooms.find((c) => c._id === entry.classroom)
-              timetable[slotKey] = {
-                subject: entry.subject,
-                subjectName: subject?.name || "Unknown",
-                subjectCode: subject?.code || "Unknown",
-                faculty: entry.faculty,
-                facultyName: faculty?.name || "Unknown",
-                classroom: entry.classroom,
-                classroomName: classroom?.name || "Unknown",
-              }
-            }
-          })
-          setTimetableData(timetable)
-          setConflicts([])
-        } catch (err: unknown) {
-          const error = err as AxiosError<{ message?: string }>
-          const errorMessage = error.response?.data?.message || error.message || "Failed to fetch timetable"
-          console.error("Fetch Timetable Error:", errorMessage)
-          setError(errorMessage)
-          toast({
-            title: "Error",
-            description: errorMessage,
-            variant: "destructive",
-          })
-        } finally {
-          setLoading(false)
+      setLoading(true)
+      try {
+        const res = await axiosInstance.get<APIResponse<TimetableEntry[]>>(`/timetable/section/${selectedSection}`)
+        if (!res.data.success) {
+          throw new Error(res.data.message || "Failed to fetch timetable")
         }
+        const entries = res.data.data
+        const timetable: TimetableData = {}
+        entries.forEach((entry) => {
+          const timeSlot = timeSlots.find((ts) => ts._id === entry.timeSlot)
+          if (timeSlot) {
+            const slotKey = `${timeSlot.day}-${timeSlot.period}`
+            const subject = subjects.find((s) => s._id === entry.subject)
+            const faculty = faculties.find((f) => f._id === entry.faculty)
+            const classroom = classrooms.find((c) => c._id === entry.classroom)
+            timetable[slotKey] = {
+              subject: entry.subject,
+              subjectName: subject?.name || "Unknown",
+              subjectCode: subject?.code || "Unknown",
+              faculty: entry.faculty,
+              facultyName: faculty?.name || "Unknown",
+              classroom: entry.classroom,
+              classroomName: classroom?.name || "Unknown",
+            }
+          }
+        })
+        setTimetableData(timetable)
+        setConflicts([])
+      } catch (err) {
+        const error = err as AxiosError<{ message?: string }>
+        const errorMessage = error.response?.data?.message || error.message || "Failed to fetch timetable"
+        setError(errorMessage)
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
       }
-      fetchTimetable()
     }
   }, [selectedBatch, selectedBranch, selectedSemester, selectedSection, timeSlots, subjects, faculties, classrooms])
 
-  // Helper to extract ID from batch, branch, semester, or subject
+  useEffect(() => {
+    fetchTimetable()
+  }, [fetchTimetable])
+
+  // Filter functions
   const getId = (item: string | { _id: string } | null): string | null => {
     if (!item) return null
     return typeof item === "string" ? item : item._id
   }
 
-  // Filter semesters by selected batch and branch
   const filteredSemesters = semesters.filter((semester) => {
     const semesterBatchId = getId(semester.batch)
     const semesterBranchId = getId(semester.branch)
     return semesterBatchId === selectedBatch && semesterBranchId === selectedBranch
   })
 
-  // Filter sections by selected semester
   const filteredSections = sections.filter((section) => {
     const sectionSemesterId = getId(section.semester)
     return sectionSemesterId === selectedSemester
   })
 
-  // Filter subjects by selected semester
   const filteredSubjects = subjects.filter((subject) => {
     const subjectSemesterId = getId(subject.semester)
     return subjectSemesterId === selectedSemester
   })
 
-  // Filter faculties by selected subject
   const filteredFaculties = slotData.subject
     ? faculties.filter((faculty) => {
-        const facultySubjects = faculty.subjects.map((s) =>
-          typeof s === "string" ? s : s._id
-        )
+        const facultySubjects = faculty.subjects.map((s) => (typeof s === "string" ? s : s._id))
         return facultySubjects.includes(slotData.subject)
       })
     : []
 
-  // Dynamically determine days and periods from timeSlots, with defaults if timeSlots is empty
   const days = timeSlots.length > 0
     ? Array.from(new Set(timeSlots.map((slot) => slot.day))).sort(
-        (a, b) =>
-          ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(a) -
-          ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(b)
+        (a, b) => ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(a) -
+                  ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(b)
       )
     : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
@@ -388,78 +356,35 @@ export default function CreateTimetablePage() {
     ? Array.from(new Set(timeSlots.map((slot) => slot.period))).sort((a, b) => a - b)
     : [1, 2, 3, 4, 5, 6]
 
-  const checkConflicts = async (
-    timeSlotId: string,
-    faculty: string,
-    classroom: string
-  ): Promise<string[]> => {
-    console.log("Checking conflicts for:", { timeSlotId, faculty, classroom })
+  const checkConflicts = async (timeSlotId: string, faculty: string, classroom: string): Promise<string[]> => {
     try {
-      const res = await axiosInstance.post("/timetable/check-conflicts", {
+      const res = await axiosInstance.post<APIResponse<{ conflicts: string[] }>>("/timetable/check-conflicts", {
         timeSlot: timeSlotId,
         faculty,
         classroom,
       })
-      console.log("Check conflicts response:", res.data)
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to check conflicts")
       }
-      return res.data.data?.conflicts || []
-    } catch (err: unknown) {
+      return res.data.data.conflicts || []
+    } catch (err) {
       const error = err as AxiosError<{ message?: string }>
-      const errorMessage = error.response?.data?.message || error.message || "Failed to check conflicts"
-      console.error("Check Conflicts Error:", errorMessage)
-      throw new Error(errorMessage)
+      throw new Error(error.response?.data?.message || error.message || "Failed to check conflicts")
     }
   }
 
   const assignSlot = async () => {
-    console.log("Assign slot triggered with:", { selectedSlot, slotData, selectedSection, timeSlots })
-    
-    if (!selectedSlot) {
-      console.log("Validation failed: No selected slot")
+    if (!selectedSlot || !slotData.subject || !slotData.faculty || !slotData.classroom || !selectedSection) {
       toast({
         title: "Validation Error",
-        description: "No time slot selected. Please select a slot to assign.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!slotData.subject || !slotData.faculty || !slotData.classroom) {
-      console.log("Validation failed: Incomplete slot data", slotData)
-      toast({
-        title: "Validation Error",
-        description: "Please fill all slot details (subject, faculty, and classroom).",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!selectedSection) {
-      console.log("Validation failed: No selected section")
-      toast({
-        title: "Validation Error",
-        description: "Please select a section before assigning a slot.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (timeSlots.length === 0) {
-      console.log("Validation failed: No time slots available")
-      toast({
-        title: "Validation Error",
-        description: "No time slots defined. Please contact the admin to add time slots.",
+        description: "Please select a time slot, subject, faculty, classroom, and section.",
         variant: "destructive",
       })
       return
     }
 
     const timeSlot = timeSlots.find((ts) => `${ts.day}-${ts.period}` === selectedSlot)
-    console.log("Time slot lookup:", { selectedSlot, timeSlot, timeSlots })
     if (!timeSlot) {
-      console.log("Validation failed: Invalid time slot", selectedSlot)
       toast({
         title: "Validation Error",
         description: "Invalid time slot selected.",
@@ -470,11 +395,8 @@ export default function CreateTimetablePage() {
 
     setAssignLoading(true)
     try {
-      // Check for conflicts
-      console.log("Initiating conflict check...")
       const slotConflicts = await checkConflicts(timeSlot._id, slotData.faculty, slotData.classroom)
       if (slotConflicts.length > 0) {
-        console.log("Conflicts found:", slotConflicts)
         setConflicts(slotConflicts)
         toast({
           title: "Conflict Detected",
@@ -484,7 +406,6 @@ export default function CreateTimetablePage() {
         return
       }
 
-      // Prepare the timetable entry
       const entry = {
         section: selectedSection,
         subject: slotData.subject,
@@ -492,19 +413,12 @@ export default function CreateTimetablePage() {
         classroom: slotData.classroom,
         timeSlot: timeSlot._id,
       }
-      console.log("Submitting timetable entry:", entry)
 
-      // Save the entry to the backend
-      const res = await axiosInstance.post<APIResponse<TimetableEntry[]>>("/timetable", {
-        entries: [entry],
-      })
-      console.log("Timetable assignment response:", res.data)
-
+      const res = await axiosInstance.post<APIResponse<TimetableEntry[]>>("/timetable", { entries: [entry] })
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to assign timetable slot")
       }
 
-      // Update local timetable data with full details
       const subject = subjects.find((s) => s._id === slotData.subject)
       const faculty = faculties.find((f) => f._id === slotData.faculty)
       const classroom = classrooms.find((c) => c._id === slotData.classroom)
@@ -528,13 +442,11 @@ export default function CreateTimetablePage() {
         variant: "default",
       })
 
-      // Reset dialog state
       setSelectedSlot(null)
       setSlotData({ subject: "", faculty: "", classroom: "" })
       setConflicts([])
-    } catch (err: unknown) {
+    } catch (err) {
       const error = err as Error
-      console.error("Assign Slot Error:", error)
       toast({
         title: "Assignment Failed",
         description: error.message || "Failed to assign timetable slot.",
@@ -542,7 +454,6 @@ export default function CreateTimetablePage() {
       })
     } finally {
       setAssignLoading(false)
-      console.log("Assign loading reset to false")
     }
   }
 
@@ -556,17 +467,17 @@ export default function CreateTimetablePage() {
       return
     }
 
-    if (timeSlots.length === 0) {
+    if (Object.keys(timetableData).length === 0) {
       toast({
         title: "Validation Error",
-        description: "No time slots defined. Cannot save timetable.",
+        description: "No timetable entries to save.",
         variant: "destructive",
       })
       return
     }
 
+    setLoading(true)
     try {
-      setLoading(true)
       const entries = Object.entries(timetableData)
         .map(([slotKey, data]) => {
           const timeSlot = timeSlots.find((ts) => `${ts.day}-${ts.period}` === slotKey)
@@ -581,17 +492,7 @@ export default function CreateTimetablePage() {
         })
         .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
 
-      if (entries.length === 0) {
-        toast({
-          title: "Validation Error",
-          description: "No valid timetable entries to save.",
-          variant: "destructive",
-        })
-        return
-      }
-
       const res = await axiosInstance.post<APIResponse<TimetableEntry[]>>("/timetable", { entries })
-
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to save timetable")
       }
@@ -602,38 +503,10 @@ export default function CreateTimetablePage() {
         variant: "default",
       })
 
-      // Refresh timetable data
-      const updatedRes = await axiosInstance.get<APIResponse<TimetableEntry[]>>(
-        `/timetable/section/${selectedSection}`
-      )
-      if (!updatedRes.data.success) {
-        throw new Error(updatedRes.data.message || "Failed to refresh timetable")
-      }
-      const updatedEntries = updatedRes.data?.data || []
-      const newTimetableData: TimetableData = {}
-      updatedEntries.forEach((entry) => {
-        const timeSlot = timeSlots.find((ts) => ts._id === entry.timeSlot)
-        if (timeSlot) {
-          const slotKey = `${timeSlot.day}-${timeSlot.period}`
-          const subject = subjects.find((s) => s._id === entry.subject)
-          const faculty = faculties.find((f) => f._id === entry.faculty)
-          const classroom = classrooms.find((c) => c._id === entry.classroom)
-          newTimetableData[slotKey] = {
-            subject: entry.subject,
-            subjectName: subject?.name || "Unknown",
-            subjectCode: subject?.code || "Unknown",
-            faculty: entry.faculty,
-            facultyName: faculty?.name || "Unknown",
-            classroom: entry.classroom,
-            classroomName: classroom?.name || "Unknown",
-          }
-        }
-      })
-      setTimetableData(newTimetableData)
-    } catch (err: unknown) {
+      await fetchTimetable()
+    } catch (err) {
       const error = err as AxiosError<{ message?: string }>
       const errorMessage = error.response?.data?.message || error.message || "Failed to save timetable"
-      console.error("Save Timetable Error:", errorMessage)
       toast({
         title: "Save Failed",
         description: errorMessage,
@@ -647,23 +520,11 @@ export default function CreateTimetablePage() {
   const getSlotKey = (day: string, period: number) => `${day}-${period}`
 
   const getPeriodTime = (day: string, period: number) => {
-    if (timeSlots.length === 0) {
-      const defaultPeriods: Record<number, string> = {
-        1: "09:00-10:00",
-        2: "10:00-11:00",
-        3: "11:15-12:00",
-        4: "12:15-13:15",
-        5: "14:30-15:30",
-        6: "15:30-16:30",
-      }
-      return defaultPeriods[period] || `Period ${period}`
-    }
     const slot = timeSlots.find((ts) => ts.day === day && ts.period === period)
     return slot ? `${slot.startTime}-${slot.endTime}` : `Period ${period} (No time slot)`
   }
 
   const hasTimeSlot = (day: string, period: number) => {
-    if (timeSlots.length === 0) return true
     return timeSlots.some((ts) => ts.day === day && ts.period === period)
   }
 
@@ -698,70 +559,43 @@ export default function CreateTimetablePage() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="batch">Batch</Label>
-                <Select value={selectedBatch} onValueChange={(value) => {
-                  console.log("Batch selected:", value);
-                  setSelectedBatch(value);
-                }}>
+                <Select value={selectedBatch} onValueChange={setSelectedBatch}>
                   <SelectTrigger id="batch">
-                    <SelectValue
-                      placeholder={batches.length === 0 ? "No batches available" : "Select batch"}
-                    />
+                    <SelectValue placeholder={batches.length === 0 ? "No batches available" : "Select batch"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {batches.length === 0 ? (
-                      <SelectItem value="no-batches" disabled>
-                        No batches available
+                    {batches.map((batch) => (
+                      <SelectItem key={batch._id} value={batch._id}>
+                        {batch.name} ({batch.startYear}-{batch.endYear})
                       </SelectItem>
-                    ) : (
-                      batches.map((batch) => (
-                        <SelectItem key={batch._id} value={batch._id}>
-                          {batch.name} ({batch.startYear}-{batch.endYear})
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
                 <Label htmlFor="branch">Branch</Label>
-                <Select value={selectedBranch} onValueChange={(value) => {
-                  console.log("Branch selected:", value);
-                  setSelectedBranch(value);
-                }}>
+                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
                   <SelectTrigger id="branch">
-                    <SelectValue
-                      placeholder={branches.length === 0 ? "No branches available" : "Select branch"}
-                    />
+                    <SelectValue placeholder={branches.length === 0 ? "No branches available" : "Select branch"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {branches.length === 0 ? (
-                      <SelectItem value="no-branches" disabled>
-                        No branches available
+                    {branches.map((branch) => (
+                      <SelectItem key={branch._id} value={branch._id}>
+                        {branch.name} ({branch.branchCode})
                       </SelectItem>
-                    ) : (
-                      branches.map((branch) => (
-                        <SelectItem key={branch._id} value={branch._id}>
-                          {branch.name} ({branch.branchCode})
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
                 <Label htmlFor="semester">Semester</Label>
-                <Select value={selectedSemester} onValueChange={(value) => {
-                  console.log("Semester selected:", value);
-                  setSelectedSemester(value);
-                }}>
+                <Select value={selectedSemester} onValueChange={setSelectedSemester}>
                   <SelectTrigger id="semester">
                     <SelectValue
                       placeholder={
-                        semesters.length === 0
-                          ? "No semesters available"
-                          : filteredSemesters.length === 0
+                        filteredSemesters.length === 0
                           ? selectedBatch && selectedBranch
                             ? "No semesters for selected batch and branch"
                             : "Select batch and branch first"
@@ -770,31 +604,18 @@ export default function CreateTimetablePage() {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {semesters.length === 0 ? (
-                      <SelectItem value="no-semesters" disabled>
-                        No semesters available
+                    {filteredSemesters.map((semester) => (
+                      <SelectItem key={semester._id} value={semester._id}>
+                        {semester.name}
                       </SelectItem>
-                    ) : filteredSemesters.length === 0 ? (
-                      <SelectItem value="no-match" disabled>
-                        No semesters for selected batch and branch
-                      </SelectItem>
-                    ) : (
-                      filteredSemesters.map((semester) => (
-                        <SelectItem key={semester._id} value={semester._id}>
-                          {semester.name}
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
                 <Label htmlFor="section">Section</Label>
-                <Select value={selectedSection} onValueChange={(value) => {
-                  console.log("Section selected:", value);
-                  setSelectedSection(value);
-                }}>
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
                   <SelectTrigger id="section">
                     <SelectValue
                       placeholder={
@@ -807,17 +628,11 @@ export default function CreateTimetablePage() {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredSections.length === 0 ? (
-                      <SelectItem value="no-sections" disabled>
-                        {selectedSemester ? "No sections for selected semester" : "Select semester first"}
+                    {filteredSections.map((section) => (
+                      <SelectItem key={section._id} value={section._id}>
+                        {section.name}
                       </SelectItem>
-                    ) : (
-                      filteredSections.map((section) => (
-                        <SelectItem key={section._id} value={section._id}>
-                          {section.name}
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -830,32 +645,18 @@ export default function CreateTimetablePage() {
                     <Label htmlFor="subject">Subject</Label>
                     <Select
                       value={slotData.subject}
-                      onValueChange={(value) => {
-                        console.log("Subject selected:", value);
-                        setSlotData({
-                          ...slotData,
-                          subject: value,
-                          faculty: "",
-                        })
-                        setConflicts([])
-                      }}
+                      onValueChange={(value) => setSlotData({ ...slotData, subject: value, faculty: "" })}
                       disabled={assignLoading}
                     >
                       <SelectTrigger id="subject">
                         <SelectValue placeholder="Select subject" />
                       </SelectTrigger>
                       <SelectContent>
-                        {filteredSubjects.length === 0 ? (
-                          <SelectItem value="no-subjects" disabled>
-                            No subjects available for this semester
+                        {filteredSubjects.map((subject) => (
+                          <SelectItem key={subject._id} value={subject._id}>
+                            {subject.name} ({subject.code})
                           </SelectItem>
-                        ) : (
-                          filteredSubjects.map((subject) => (
-                            <SelectItem key={subject._id} value={subject._id}>
-                              {subject.name} ({subject.code})
-                            </SelectItem>
-                          ))
-                        )}
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -864,34 +665,18 @@ export default function CreateTimetablePage() {
                     <Label htmlFor="faculty">Faculty</Label>
                     <Select
                       value={slotData.faculty}
-                      onValueChange={(value) => {
-                        console.log("Faculty selected:", value);
-                        setSlotData({ ...slotData, faculty: value })
-                        setConflicts([])
-                      }}
+                      onValueChange={(value) => setSlotData({ ...slotData, faculty: value })}
                       disabled={assignLoading || !slotData.subject}
                     >
                       <SelectTrigger id="faculty">
                         <SelectValue placeholder={slotData.subject ? "Select faculty" : "Select a subject first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {filteredFaculties.length === 0 ? (
-                          slotData.subject ? (
-                            <SelectItem value="no-faculty" disabled>
-                              No faculty assigned to selected subject
-                            </SelectItem>
-                          ) : (
-                            <SelectItem value="no-subject" disabled>
-                              Select a subject first
-                            </SelectItem>
-                          )
-                        ) : (
-                          filteredFaculties.map((faculty) => (
-                            <SelectItem key={faculty._id} value={faculty._id}>
-                              {faculty.name} ({faculty.email})
-                            </SelectItem>
-                          ))
-                        )}
+                        {filteredFaculties.map((faculty) => (
+                          <SelectItem key={faculty._id} value={faculty._id}>
+                            {faculty.name} ({faculty.email})
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -900,28 +685,18 @@ export default function CreateTimetablePage() {
                     <Label htmlFor="classroom">Classroom</Label>
                     <Select
                       value={slotData.classroom}
-                      onValueChange={(value) => {
-                        console.log("Classroom selected:", value);
-                        setSlotData({ ...slotData, classroom: value })
-                        setConflicts([])
-                      }}
+                      onValueChange={(value) => setSlotData({ ...slotData, classroom: value })}
                       disabled={assignLoading}
                     >
                       <SelectTrigger id="classroom">
                         <SelectValue placeholder="Select classroom" />
                       </SelectTrigger>
                       <SelectContent>
-                        {classrooms.length === 0 ? (
-                          <SelectItem value="no-classrooms" disabled>
-                            No classrooms available
+                        {classrooms.map((classroom) => (
+                          <SelectItem key={classroom._id} value={classroom._id}>
+                            {classroom.name} (Capacity: {classroom.capacity})
                           </SelectItem>
-                        ) : (
-                          classrooms.map((classroom) => (
-                            <SelectItem key={classroom._id} value={classroom._id}>
-                              {classroom.name} (Capacity: {classroom.capacity})
-                            </SelectItem>
-                          ))
-                        )}
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -940,26 +715,12 @@ export default function CreateTimetablePage() {
                   )}
 
                   <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        console.log("Assign button clicked");
-                        assignSlot();
-                      }}
-                      className="flex-1"
-                      disabled={assignLoading}
-                    >
+                    <Button onClick={assignSlot} className="flex-1" disabled={assignLoading}>
                       {assignLoading ? (
                         <div className="flex items-center">
-                          <div className="animate-spin mr-2">
-                            <svg className="w-4 h-4" viewBox="0 0 24 24">
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              />
+                          <div className="animate-spin mr-2 h-4 w-4">
+                            <svg viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                               <path
                                 className="opacity-75"
                                 fill="currentColor"
@@ -1015,7 +776,7 @@ export default function CreateTimetablePage() {
                     <Alert className="mb-4">
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription>
-                        No time slots defined. Using default periods. Please contact the admin to add time slots for accurate scheduling.
+                        No time slots defined. Please contact the admin to add time slots for accurate scheduling.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -1066,6 +827,14 @@ export default function CreateTimetablePage() {
                                       : ""
                                   }`}
                                   onClick={() => {
+                                    if (!slotExists) {
+                                      toast({
+                                        title: "Error",
+                                        description: `No time slot defined for ${day}, Period ${period}.`,
+                                        variant: "destructive",
+                                      })
+                                      return
+                                    }
                                     if (!selectedBatch || !selectedBranch || !selectedSemester || !selectedSection) {
                                       toast({
                                         title: "Error",
@@ -1074,25 +843,16 @@ export default function CreateTimetablePage() {
                                       })
                                       return
                                     }
-                                    if (!slotExists) {
-                                      toast({
-                                        title: "Error",
-                                        description: `No time slot defined for ${day}, Period ${period}. Please contact the admin to add this time slot.`,
-                                        variant: "destructive",
-                                      })
-                                      return
-                                    }
-                                    console.log("Setting selected slot:", slotKey);
                                     setSelectedSlot(slotKey)
-                                    if (slotInfo) {
-                                      setSlotData({
-                                        subject: slotInfo.subject,
-                                        faculty: slotInfo.faculty,
-                                        classroom: slotInfo.classroom,
-                                      })
-                                    } else {
-                                      setSlotData({ subject: "", faculty: "", classroom: "" })
-                                    }
+                                    setSlotData(
+                                      slotInfo
+                                        ? {
+                                            subject: slotInfo.subject,
+                                            faculty: slotInfo.faculty,
+                                            classroom: slotInfo.classroom,
+                                          }
+                                        : { subject: "", faculty: "", classroom: "" }
+                                    )
                                   }}
                                 >
                                   {slotExists ? (
@@ -1122,19 +882,18 @@ export default function CreateTimetablePage() {
                       </tbody>
                     </table>
                   </div>
+                  {Object.keys(timetableData).length > 0 && (
+                    <div className="mt-6 flex justify-end">
+                      <Button onClick={saveTimetable} disabled={loading}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Timetable
+                      </Button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-center py-12 text-gray-500">
                   Please select batch, branch, semester, and section to create timetable
-                </div>
-              )}
-
-              {Object.keys(timetableData).length > 0 && (
-                <div className="mt-6 flex justify-end">
-                  <Button onClick={saveTimetable} disabled={loading}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Timetable
-                  </Button>
                 </div>
               )}
             </CardContent>
