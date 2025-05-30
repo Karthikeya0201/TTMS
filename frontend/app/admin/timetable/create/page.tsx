@@ -178,7 +178,7 @@ export default function CreateTimetablePage() {
           classroomsRes,
           timeSlotsRes,
         ] = await Promise.all([
-          axiosInstance.get<APIResponse<Batch[]>>("/batches"),
+          axiosInstance.get<APIResponse<Batch[]>>("/timetable/batches"),
           axiosInstance.get<APIResponse<Branch[]>>("/branches"),
           axiosInstance.get<APIResponse<Semester[]>>("/semesters"),
           axiosInstance.get<APIResponse<Section[]>>("/sections"),
