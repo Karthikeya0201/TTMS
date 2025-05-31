@@ -1,29 +1,48 @@
-import Faculty from '../models/Faculty.js';
 import asyncHandler from 'express-async-handler';
+import Faculty from '../models/Faculty.js';
 
 // Get all faculties
 export const getFaculties = asyncHandler(async (req, res) => {
-  const faculties = await Faculty.find().populate('subjects');
-  res.json(faculties);
+  const faculties = await Faculty.find().populate('subjects').lean();
+  res.status(200).json({
+    success: true,
+    data: faculties,
+    message: faculties.length > 0 ? 'Faculties retrieved successfully' : 'No faculties found',
+  });
 });
 
 // Create a faculty
 export const createFaculty = asyncHandler(async (req, res) => {
   const { name, email, subjects } = req.body;
   if (!name || !email) {
-    res.status(400);
-    throw new Error('Name and email are required');
+    res.status(400).json({
+      success: false,
+      message: 'Name and email are required',
+    });
+    return;
   }
   const faculty = await Faculty.create({ name, email, subjects: subjects || [] });
-  res.status(201).json(faculty);
+  await faculty.populate('subjects');
+  res.status(201).json({
+    success: true,
+    data: faculty,
+    message: 'Faculty created successfully',
+  });
 });
 
 // Delete a faculty
 export const deleteFaculty = asyncHandler(async (req, res) => {
   const faculty = await Faculty.findByIdAndDelete(req.params.id);
   if (!faculty) {
-    res.status(404);
-    throw new Error('Faculty not found');
+    res.status(404).json({
+      success: false,
+      message: 'Faculty not found',
+    });
+    return;
   }
-  res.json({ message: 'Faculty deleted' });
+  res.status(200).json({
+    success: true,
+    data: null,
+    message: 'Faculty deleted successfully',
+  });
 });

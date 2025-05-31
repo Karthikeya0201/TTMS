@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -11,89 +11,10 @@ import { AlertTriangle, Check, Save } from "lucide-react"
 import axios, { AxiosError } from "axios"
 import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
+import { getCurrentPeriod, getPeriodTime, hasTimeSlot } from "@/utils/timeUtils"
+import { APIResponse, Batch, Branch, Classroom, Faculty, Section, Semester, SlotData, Subject, TimeSlot, TimetableEntry } from "@/types/timetable"
 
-// Interfaces aligned with backend schemas
-interface Batch {
-  _id: string;
-  name: string;
-  startYear: number;
-  endYear: number;
-}
-
-interface Branch {
-  _id: string;
-  name: string;
-  branchCode: string;
-}
-
-interface Semester {
-  _id: string;
-  name: string;
-  branch: string | Branch;
-  batch: string | Batch;
-}
-
-interface Section {
-  _id: string;
-  name: string;
-  semester: string | Semester;
-}
-
-interface Subject {
-  _id: string;
-  name: string;
-  code: string;
-  semester: string | { _id: string; name: string };
-}
-
-interface Faculty {
-  _id: string;
-  name: string;
-  email: string;
-  subjects: string[] | Subject[];
-}
-
-interface Classroom {
-  _id: string;
-  name: string;
-  capacity: number;
-}
-
-interface TimeSlot {
-  _id: string;
-  day: string;
-  period: number;
-  startTime: string;
-  endTime: string;
-}
-
-interface TimetableEntry {
-  _id: string;
-  section: string;
-  subject: string;
-  faculty: string;
-  classroom: string;
-  timeSlot: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-interface APIResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
-
-interface SlotData {
-  subject: string;
-  subjectName: string;
-  subjectCode: string;
-  faculty: string;
-  facultyName: string;
-  classroom: string;
-  classroomName: string;
-}
-
+// Timetable data type
 type TimetableData = { [slotKey: string]: SlotData };
 
 export default function CreateTimetablePage() {
@@ -127,9 +48,9 @@ export default function CreateTimetablePage() {
   const [currentPeriod, setCurrentPeriod] = useState<number | null>(null)
   const router = useRouter()
 
-  const API_BASE_URL = "https://ttms.onrender.com/api"
+  const API_BASE_URL = "http://localhost:5000/api"
   const currentDay = "Saturday" // May 31, 2025
-  const currentTime = new Date("2025-05-31T01:08:00+05:30") // 01:08 AM IST
+  const currentTime = new Date("2025-05-31T01:31:00+05:30") // 01:31 AM IST
 
   // Configure Axios with auth header
   const axiosInstance = axios.create({
@@ -144,20 +65,18 @@ export default function CreateTimetablePage() {
   axiosInstance.interceptors.request.use(
     (config) => {
       const token = localStorage.getItem("auth-token")
-      if (token) {
+      if (token && config.url?.startsWith("/timetable")) {
         config.headers.Authorization = `Bearer ${token}`
-      } else {
-        throw new Error("No authentication token found. Please log in.")
       }
       return config
     },
     (error) => {
       toast({
         title: "Authentication Error",
-        description: error.message,
+        description: error.message || "Failed to authenticate. Please log in.",
         variant: "destructive",
       })
-      router.push("/login")
+      router.push('/')
       return Promise.reject(error)
     }
   )
@@ -168,46 +87,50 @@ export default function CreateTimetablePage() {
       setLoading(true)
       setError(null)
       try {
-        const [
-          batchesRes,
-          branchesRes,
-          semestersRes,
-          sectionsRes,
-          subjectsRes,
-          facultiesRes,
-          classroomsRes,
-          timeSlotsRes,
-        ] = await Promise.all([
-          axiosInstance.get<APIResponse<Batch[]>>("/timetable/batches"),
-          axiosInstance.get<APIResponse<Branch[]>>("/branches"),
-          axiosInstance.get<APIResponse<Semester[]>>("/semesters"),
-          axiosInstance.get<APIResponse<Section[]>>("/sections"),
-          axiosInstance.get<APIResponse<Subject[]>>("/subjects"),
-          axiosInstance.get<APIResponse<Faculty[]>>("/faculties"),
-          axiosInstance.get<APIResponse<Classroom[]>>("/classrooms"),
-          axiosInstance.get<APIResponse<TimeSlot[]>>("/timeslots"),
-        ])
+        const endpoints = [
+          "/batches",
+          "/branches",
+          "/semesters",
+          "/sections",
+          "/subjects",
+          "/faculties",
+          "/classrooms",
+          "/timeslots",
+        ]
+        const responses = await Promise.all(
+          endpoints.map((endpoint) => axiosInstance.get<APIResponse<any>>(endpoint))
+        )
 
-        const responses = [
-          { res: batchesRes, setter: setBatches, name: "batches" },
-          { res: branchesRes, setter: setBranches, name: "branches" },
-          { res: semestersRes, setter: setSemesters, name: "semesters" },
-          { res: sectionsRes, setter: setSections, name: "sections" },
-          { res: subjectsRes, setter: setSubjects, name: "subjects" },
-          { res: facultiesRes, setter: setFaculties, name: "faculties" },
-          { res: classroomsRes, setter: setClassrooms, name: "classrooms" },
-          { res: timeSlotsRes, setter: setTimeSlots, name: "time slots" },
+        const setters = [
+          setBatches,
+          setBranches,
+          setSemesters,
+          setSections,
+          setSubjects,
+          setFaculties,
+          setClassrooms,
+          setTimeSlots,
+        ]
+        const names = [
+          "batches",
+          "branches",
+          "semesters",
+          "sections",
+          "subjects",
+          "faculties",
+          "classrooms",
+          "time slots",
         ]
 
         const missingData: string[] = []
-        responses.forEach(({ res, setter, name }) => {
+        responses.forEach((res, index) => {
           if (!res.data.success) {
-            throw new Error(res.data.message || `Failed to fetch ${name}`)
+            throw new Error(res.data.message || `Failed to fetch ${names[index]}`)
           }
           const data = res.data.data || []
-          setter(data as any)
+          setters[index](data)
           if (!data.length) {
-            missingData.push(name)
+            missingData.push(names[index])
           }
         })
 
@@ -221,6 +144,7 @@ export default function CreateTimetablePage() {
       } catch (err) {
         const error = err as AxiosError<{ message?: string }>
         const errorMessage = error.response?.data?.message || error.message || "Failed to fetch master data"
+        console.error(`Error fetching master data: ${errorMessage}`, err)
         setError(errorMessage)
         toast({
           title: "Error",
@@ -237,21 +161,7 @@ export default function CreateTimetablePage() {
 
   // Determine current period
   useEffect(() => {
-    if (timeSlots.length > 0) {
-      const todaySlots = timeSlots.filter((slot) => slot.day === currentDay)
-      const period = todaySlots.find((slot) => {
-        try {
-          const start = new Date(`2025-05-31T${slot.startTime}:00+05:30`)
-          const end = new Date(`2025-05-31T${slot.endTime}:00+05:30`)
-          return currentTime >= start && currentTime <= end
-        } catch (error) {
-          return false
-        }
-      })
-      setCurrentPeriod(period ? period.period : null)
-    } else {
-      setCurrentPeriod(null)
-    }
+    setCurrentPeriod(getCurrentPeriod(timeSlots, currentDay, currentTime))
   }, [timeSlots])
 
   // Reset dependent selections
@@ -303,6 +213,7 @@ export default function CreateTimetablePage() {
       } catch (err) {
         const error = err as AxiosError<{ message?: string }>
         const errorMessage = error.response?.data?.message || error.message || "Failed to fetch timetable"
+        console.error(`Error fetching timetable: ${errorMessage}`, err)
         setError(errorMessage)
         toast({
           title: "Error",
@@ -319,45 +230,58 @@ export default function CreateTimetablePage() {
     fetchTimetable()
   }, [fetchTimetable])
 
+  // Derived data with useMemo
+  const days = useMemo(() => {
+    return timeSlots.length > 0
+      ? Array.from(new Set(timeSlots.map((slot) => slot.day))).sort(
+          (a, b) => ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(a) -
+                    ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(b)
+        )
+      : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+  }, [timeSlots])
+
+  const periods = useMemo(() => {
+    return timeSlots.length > 0
+      ? Array.from(new Set(timeSlots.map((slot) => slot.period))).sort((a, b) => a - b)
+      : [1, 2, 3, 4, 5, 6]
+  }, [timeSlots])
+
   // Filter functions
   const getId = (item: string | { _id: string } | null): string | null => {
     if (!item) return null
     return typeof item === "string" ? item : item._id
   }
 
-  const filteredSemesters = semesters.filter((semester) => {
-    const semesterBatchId = getId(semester.batch)
-    const semesterBranchId = getId(semester.branch)
-    return semesterBatchId === selectedBatch && semesterBranchId === selectedBranch
-  })
+  const filteredSemesters = useMemo(() => {
+    return semesters.filter((semester) => {
+      const semesterBatchId = getId(semester.batch)
+      const semesterBranchId = getId(semester.branch)
+      return semesterBatchId === selectedBatch && semesterBranchId === selectedBranch
+    })
+  }, [semesters, selectedBatch, selectedBranch])
 
-  const filteredSections = sections.filter((section) => {
-    const sectionSemesterId = getId(section.semester)
-    return sectionSemesterId === selectedSemester
-  })
+  const filteredSections = useMemo(() => {
+    return sections.filter((section) => {
+      const sectionSemesterId = getId(section.semester)
+      return sectionSemesterId === selectedSemester
+    })
+  }, [sections, selectedSemester])
 
-  const filteredSubjects = subjects.filter((subject) => {
-    const subjectSemesterId = getId(subject.semester)
-    return subjectSemesterId === selectedSemester
-  })
+  const filteredSubjects = useMemo(() => {
+    return subjects.filter((subject) => {
+      const subjectSemesterId = getId(subject.semester)
+      return subjectSemesterId === selectedSemester
+    })
+  }, [subjects, selectedSemester])
 
-  const filteredFaculties = slotData.subject
-    ? faculties.filter((faculty) => {
-        const facultySubjects = faculty.subjects.map((s) => (typeof s === "string" ? s : s._id))
-        return facultySubjects.includes(slotData.subject)
-      })
-    : []
-
-  const days = timeSlots.length > 0
-    ? Array.from(new Set(timeSlots.map((slot) => slot.day))).sort(
-        (a, b) => ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(a) -
-                  ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(b)
-      )
-    : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-
-  const periods = timeSlots.length > 0
-    ? Array.from(new Set(timeSlots.map((slot) => slot.period))).sort((a, b) => a - b)
-    : [1, 2, 3, 4, 5, 6]
+  const filteredFaculties = useMemo(() => {
+    return slotData.subject
+      ? faculties.filter((faculty) => {
+          const facultySubjects = faculty.subjects.map((s) => (typeof s === "string" ? s : s._id))
+          return facultySubjects.includes(slotData.subject)
+        })
+      : []
+  }, [faculties, slotData.subject])
 
   const checkConflicts = async (timeSlotId: string, faculty: string, classroom: string): Promise<string[]> => {
     try {
@@ -372,6 +296,7 @@ export default function CreateTimetablePage() {
       return res.data.data.conflicts || []
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>
+      console.error(`Error checking conflicts: ${error.message}`, err)
       throw new Error(error.response?.data?.message || error.message || "Failed to check conflicts")
     }
   }
@@ -469,6 +394,7 @@ export default function CreateTimetablePage() {
       setError(null)
     } catch (err) {
       const error = err as Error
+      console.error(`Error assigning slot: ${error.message}`, err)
       toast({
         title: "Assignment Failed",
         description: error.message || "Failed to assign timetable slot.",
@@ -543,6 +469,7 @@ export default function CreateTimetablePage() {
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>
       const errorMessage = error.response?.data?.message || error.message || "Failed to save timetable"
+      console.error(`Error saving timetable: ${errorMessage}`, err)
       toast({
         title: "Save Failed",
         description: errorMessage,
@@ -554,26 +481,6 @@ export default function CreateTimetablePage() {
   }
 
   const getSlotKey = (day: string, period: number) => `${day}-${period}`
-
-  const getPeriodTime = (day: string, period: number) => {
-    if (timeSlots.length === 0) {
-      const defaultPeriods: Record<number, string> = {
-        1: "09:00-10:00",
-        2: "10:00-11:00",
-        3: "11:15-12:00",
-        4: "12:15-13:15",
-        5: "14:30-15:30",
-        6: "15:30-16:30",
-      }
-      return defaultPeriods[period] || `Period ${period}`
-    }
-    const slot = timeSlots.find((ts) => ts.day === day && ts.period === period)
-    return slot ? `${slot.startTime}-${slot.endTime}` : `Period ${period} (No time slot)`
-  }
-
-  const hasTimeSlot = (day: string, period: number) => {
-    return timeSlots.length > 0 && timeSlots.some((ts) => ts.day === day && ts.period === period)
-  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -906,19 +813,18 @@ export default function CreateTimetablePage() {
                           <tr key={period}>
                             <td
                               className={`border border-gray-300 p-2 font-medium bg-gray-50 ${
-                                period === currentPeriod &&
-                                timeSlots.some((ts) => ts.day === currentDay && ts.period === period)
+                                period === currentPeriod && hasTimeSlot(currentDay, period, timeSlots)
                                   ? "bg-blue-200"
                                   : ""
                               }`}
                             >
-                              <div className="text-sm">{getPeriodTime(currentDay, period)}</div>
+                              <div className="text-sm">{getPeriodTime(currentDay, period, timeSlots)}</div>
                               <div className="text-xs text-gray-500">Period {period}</div>
                             </td>
                             {days.map((day) => {
                               const slotKey = getSlotKey(day, period)
                               const slotInfo = timetableData[slotKey]
-                              const slotExists = hasTimeSlot(day, period)
+                              const slotExists = hasTimeSlot(day, period, timeSlots)
                               return (
                                 <td
                                   key={slotKey}
@@ -928,7 +834,7 @@ export default function CreateTimetablePage() {
                                       : "bg-gray-200 cursor-not-allowed"
                                   } ${
                                     day === currentDay && period === currentPeriod && slotExists
-                                      ? "bg-blue-200"
+                                      ? "bg-blue"
                                       : ""
                                   }`}
                                   onClick={() => {
@@ -936,7 +842,7 @@ export default function CreateTimetablePage() {
                                       toast({
                                         title: "Error",
                                         description: "Please select all criteria before assigning slots.",
-                                        variant: "destructive",
+                                        variant: "destructive"
                                       })
                                       return
                                     }
@@ -972,8 +878,8 @@ export default function CreateTimetablePage() {
                                     <div className="text-center text-gray-500 text-sm">No time slot</div>
                                   )}
                                 </td>
-                              )
-                            })}
+                              )}
+                            )}
                           </tr>
                         ))}
                       </tbody>

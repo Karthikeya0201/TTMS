@@ -17,7 +17,7 @@ const app = express();
 app.use(
   cors({
     origin: ["https://timetablemanage.vercel.app", "http://localhost:3000"], // Replace with your frontend URL
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: "*",
     credentials: true, // if using cookies or sessions
   })
 );
@@ -101,7 +101,7 @@ app.get('/', (req, res) => {
 app.use(errorHandler);
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT =5000;
 app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
 });

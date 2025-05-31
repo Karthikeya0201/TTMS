@@ -119,7 +119,7 @@ export default function MasterDataPage() {
   });
 
   // Base URL for API
-  const API_BASE_URL = "https://ttms.onrender.com/api";
+  const API_BASE_URL = "http://localhost:5000/api";
 
   // Get JWT token from local storage
   const getToken = () => localStorage.getItem("token") || "";
