@@ -80,7 +80,7 @@ export default function ViewTimetablePage() {
   const [currentPeriod, setCurrentPeriod] = useState<number | null>(null);
 
   const router = useRouter();
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+  const API_BASE_URL = "https://ttms.onrender.com/api";
   const currentDay = "Wednesday"; // Since today is Wednesday, May 28, 2025
   const currentTime = new Date("2025-05-28T22:17:00+05:30"); // 10:17 PM IST
 
