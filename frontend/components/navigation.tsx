@@ -26,7 +26,7 @@ export function Navigation() {
       icon: Plus,
     },
     {
-      href: "/timetable/view",
+      href: "/admin/timetable/view",
       label: "View Timetables",
       icon: Eye,
     },

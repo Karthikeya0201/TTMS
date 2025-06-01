@@ -1,17 +1,31 @@
-// routes/timetable.js
 import express from 'express';
-import * as timetableController from '../controllers/timetableController.js';
-import { auth } from '../middleware/auth.js';
+import {
+  createTimetable,
+  checkConflicts,
+  getTimetableBySection,
+  getTimetableByFilters,
+  getTimetableByFaculty,
+  getTimetableByClassroom,
+} from '../controllers/timetableController.js';
 
 const router = express.Router();
 
+// Create timetable entries
+router.post('/', createTimetable);
+
+// Check for conflicts
+router.post('/check-conflicts', checkConflicts);
+
 // Get timetable by section
-router.get('/section/:sectionId', timetableController.getTimetableBySection);
+router.get('/section/:sectionId', getTimetableBySection);
 
-// Check conflicts
-router.post('/check-conflicts', timetableController.checkConflicts);
+// Get timetable by batch, branch, semester, and section
+router.get('/filter', getTimetableByFilters);
 
-// Save timetable entries (admin only)
-router.post('/', timetableController.createTimetable);
+// Get timetable by faculty
+router.get('/faculty/:facultyId', getTimetableByFaculty);
+
+// Get timetable by classroom
+router.get('/classroom/:classroomId', getTimetableByClassroom);
 
 export default router;
