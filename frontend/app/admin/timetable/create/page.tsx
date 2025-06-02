@@ -50,8 +50,9 @@ export default function CreateTimetablePage() {
   const router = useRouter();
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
-  const currentDay = Date.now; // June 1, 2025
-  const currentTime = new Date("2025-06-01T21:18:00+05:30"); // 9:18 PM IST
+  const currentDate = new Date("2025-06-01T21:18:00+05:30"); // June 1, 2025, 9:18 PM IST
+  const currentDay = currentDate.toLocaleDateString("en-US", { weekday: "long" }); // "Sunday"
+  const currentTime = currentDate;
 
   // Configure Axios with auth header
   const axiosInstance = axios.create({
@@ -173,10 +174,9 @@ export default function CreateTimetablePage() {
     fetchMasterData();
   }, []);
 
-  // Determine current period
   useEffect(() => {
     setCurrentPeriod(getCurrentPeriod(timeSlots, currentDay, currentTime));
-  }, [timeSlots]);
+  }, [timeSlots, currentDay, currentTime]);
 
   // Reset dependent selections when batch or branch changes
   useEffect(() => {
@@ -226,22 +226,59 @@ export default function CreateTimetablePage() {
 
       const timetable: TimetableData = {};
       entries.forEach((entry) => {
-        const timeSlot = timeSlots.find((ts) => ts._id === (entry.timeSlot?._id || entry.timeSlot));
-        const subject = subjects.find((s) => s._id === (entry.subject?._id || entry.subject));
-        const faculty = faculties.find((f) => f._id === (entry.faculty?._id || entry.faculty));
-        const classroom = classrooms.find((c) => c._id === (entry.classroom?._id || entry.classroom));
+        const timeSlotId =
+          typeof entry.timeSlot === "string"
+            ? entry.timeSlot
+            : entry.timeSlot && typeof entry.timeSlot === "object" && "_id" in entry.timeSlot
+            ? (entry.timeSlot as { _id: string })._id
+            : "";
+        const subjectId =
+          typeof entry.subject === "string"
+            ? entry.subject
+            : entry.subject && typeof entry.subject === "object" && "_id" in entry.subject
+            ? (entry.subject as { _id: string })._id
+            : "";
+        const facultyId =
+          typeof entry.faculty === "string"
+            ? entry.faculty
+            : entry.faculty && typeof entry.faculty === "object" && "_id" in entry.faculty
+            ? (entry.faculty as { _id: string })._id
+            : "";
+        const classroomId =
+          typeof entry.classroom === "string"
+            ? entry.classroom
+            : entry.classroom && typeof entry.classroom === "object" && "_id" in entry.classroom
+            ? (entry.classroom as { _id: string })._id
+            : "";
+
+        const timeSlot = timeSlots.find((ts) => ts._id === timeSlotId);
+        const subject = subjects.find((s) => s._id === subjectId);
+        const faculty = faculties.find((f) => f._id === facultyId);
+        const classroom = classrooms.find((c) => c._id === classroomId);
 
         if (!timeSlot || !subject || !faculty || !classroom) {
           console.warn(`Skipping entry due to missing reference data:`, {
             entryId: entry._id,
             timeSlot: !!timeSlot,
-            timeSlotId: entry.timeSlot?._id || entry.timeSlot,
+            timeSlotId:
+              typeof entry.timeSlot === "object" && entry.timeSlot !== null && "_id" in entry.timeSlot
+                ? (entry.timeSlot as { _id: string })._id
+                : entry.timeSlot,
             subject: !!subject,
-            subjectId: entry.subject?._id || entry.subject,
+            subjectId:
+              typeof entry.subject === "object" && entry.subject !== null && "_id" in entry.subject
+                ? (entry.subject as { _id: string })._id
+                : entry.subject,
             faculty: !!faculty,
-            facultyId: entry.faculty?._id || entry.faculty,
+            facultyId:
+              typeof entry.faculty === "object" && entry.faculty !== null && "_id" in entry.faculty
+                ? (entry.faculty as { _id: string })._id
+                : entry.faculty,
             classroom: !!classroom,
-            classroomId: entry.classroom?._id || entry.classroom,
+            classroomId:
+              typeof entry.classroom === "object" && entry.classroom !== null && "_id" in entry.classroom
+                ? (entry.classroom as { _id: string })._id
+                : entry.classroom,
           });
           return;
         }
@@ -419,7 +456,11 @@ export default function CreateTimetablePage() {
           facultyName: facultyExists.name,
           classroom: slotData.classroom,
           classroomName: classroomExists.name,
-          entryId: slotData.entryId || res.data.data[0]?._id || res.data.data._id,
+          entryId:
+            slotData.entryId ||
+            (Array.isArray(res.data.data)
+              ? res.data.data[0]?._id
+              : (res.data.data as TimetableEntry)?._id),
         },
       }));
 
