@@ -113,7 +113,7 @@ export default function ViewTimetablePage() {
   const [currentPeriod, setCurrentPeriod] = useState<number | null>(null);
 
   const router = useRouter();
-  const API_BASE_URL = "https://ttms.onrender.com/api";
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
   const currentDay = "Sunday"; // June 01, 2025
   const currentTime = new Date("2025-06-01T23:56:00+05:30"); // 11:56 PM IST
 

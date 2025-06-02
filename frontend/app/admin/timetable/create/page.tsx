@@ -49,8 +49,8 @@ export default function CreateTimetablePage() {
   const [currentPeriod, setCurrentPeriod] = useState<number | null>(null);
   const router = useRouter();
 
-  const API_BASE_URL = "https://ttms.onrender.com/api";
-  const currentDay = "Sunday"; // June 1, 2025
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+  const currentDay = Date.now; // June 1, 2025
   const currentTime = new Date("2025-06-01T21:18:00+05:30"); // 9:18 PM IST
 
   // Configure Axios with auth header
