@@ -2272,3 +2272,4 @@
 {"level":"info","message":"GET /api/faculties","timestamp":"2025-06-01T20:02:34.690Z"}
 {"level":"info","message":"GET /api/classrooms","timestamp":"2025-06-01T20:02:34.978Z"}
 {"level":"info","message":"GET /api/timeslots","timestamp":"2025-06-01T20:02:35.028Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-06-02T06:01:24.887Z"}

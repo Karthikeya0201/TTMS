@@ -5,7 +5,7 @@ import { auth } from '../middleware/auth.js';
 const router = express.Router();
 
 router.get('/', batchController.getAllBatches);
-router.post('/', auth, validate('createBatch'), batchController.createBatch);
-router.delete('/:id', auth, batchController.deleteBatch);
+router.post('/',  batchController.createBatch);
+router.delete('/:id', batchController.deleteBatch);
 
 export default router;
